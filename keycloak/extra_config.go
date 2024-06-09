@@ -2,7 +2,7 @@ package keycloak
 
 import (
 	"encoding/json"
-	"github.com/mrparkers/terraform-provider-keycloak/keycloak/types"
+	"github.com/lucdew/terraform-provider-keycloak/keycloak/types"
 	"reflect"
 	"strconv"
 	"strings"
