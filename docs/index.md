@@ -23,7 +23,7 @@ sure which to use, the client credentials grant is recommended, as it was design
 ### Client Credentials Grant Setup (recommended)
 
 1. Create a new client using the `openid-connect` protocol. This client can be created in the `master` realm if you would
-like to manage your entire Keycloak instance, or in any other realm if you only want to manage that realm.
+   like to manage your entire Keycloak instance, or in any other realm if you only want to manage that realm.
 1. Update the client you just created:
     1. Set `Access Type` to `confidential`.
     1. Set `Standard Flow Enabled` to `OFF`.
@@ -45,12 +45,12 @@ There are many ways that roles can be assigned to manage Keycloak. Here are a co
 by suggested roles to assign. This is not an exhaustive list, and there is often more than one way to assign a particular set
 of permissions.
 
-- Managing the entire Keycloak instance: Assign the `admin` role to a user or service account within the `master` realm.
-- Managing the entire `foo` realm: Assign the `realm-admin` client role from the `realm-management` client to a user or service
-account within the `foo` realm.
-- Managing clients for all realms within the entire Keycloak instance: Assign the `create-client` client role from each of
-the realm clients to a user or service account within the `master` realm. For example, given a Keycloak instance with realms
-`master`, `foo`, and `bar`, assign the `create-client` client role from the clients `master-realm`, `foo-realm`, and `bar-realm`.
+-   Managing the entire Keycloak instance: Assign the `admin` role to a user or service account within the `master` realm.
+-   Managing the entire `foo` realm: Assign the `realm-admin` client role from the `realm-management` client to a user or service
+    account within the `foo` realm.
+-   Managing clients for all realms within the entire Keycloak instance: Assign the `create-client` client role from each of
+    the realm clients to a user or service account within the `master` realm. For example, given a Keycloak instance with realms
+    `master`, `foo`, and `bar`, assign the `create-client` client role from the clients `master-realm`, `foo-realm`, and `bar-realm`.
 
 ## Example Usage (client credentials grant)
 
@@ -77,15 +77,17 @@ provider "keycloak" {
 
 The following arguments are supported:
 
-- `client_id` - (Required) The `client_id` for the client that was created in the "Keycloak Setup" section. Use the `admin-cli` client if you are using the password grant. Defaults to the environment variable `KEYCLOAK_CLIENT_ID`.
-- `url` - (Required) The URL of the Keycloak instance, before `/auth/admin`. Defaults to the environment variable `KEYCLOAK_URL`.
-- `client_secret` - (Optional) The secret for the client used by the provider for authentication via the client credentials grant. This can be found or changed using the "Credentials" tab in the client settings. Defaults to the environment variable `KEYCLOAK_CLIENT_SECRET`. This attribute is required when using the client credentials grant, and cannot be set when using the password grant.
-- `username` - (Optional) The username of the user used by the provider for authentication via the password grant. Defaults to the environment variable `KEYCLOAK_USER`. This attribute is required when using the password grant, and cannot be set when using the client credentials grant.
-- `password` - (Optional) The password of the user used by the provider for authentication via the password grant. Defaults to the environment variable `KEYCLOAK_PASSWORD`. This attribute is required when using the password grant, and cannot be set when using the client credentials grant.
-- `realm` - (Optional) The realm used by the provider for authentication. Defaults to the environment variable `KEYCLOAK_REALM`, or `master` if the environment variable is not specified.
-- `initial_login` - (Optional) Optionally avoid Keycloak login during provider setup, for when Keycloak itself is being provisioned by terraform. Defaults to true, which is the original method.
-- `client_timeout` - (Optional) Sets the timeout of the client when addressing Keycloak, in seconds. Defaults to the environment variable `KEYCLOAK_CLIENT_TIMEOUT`, or `5` if the environment variable is not specified.
-- `tls_insecure_skip_verify` - (Optional) Allows ignoring insecure certificates when set to `true`. Defaults to `false`. Disabling this security check is dangerous and should only be done in local or test environments.
-- `root_ca_certificate` - (Optional) Allows x509 calls using an unknown CA certificate (for development purposes)
-- `base_path` - (Optional) The base path used for accessing the Keycloak REST API.  Defaults to the environment variable `KEYCLOAK_BASE_PATH`, or an empty string if the environment variable is not specified. Note that users of the legacy distribution of Keycloak will need to set this attribute to `/auth`.
-- `additional_headers` - (Optional) A map of custom HTTP headers to add to each request to the Keycloak API.
+-   `client_id` - (Required) The `client_id` for the client that was created in the "Keycloak Setup" section. Use the `admin-cli` client if you are using the password grant. Defaults to the environment variable `KEYCLOAK_CLIENT_ID`.
+-   `url` - (Required) The URL of the Keycloak instance, before `/auth/admin`. Defaults to the environment variable `KEYCLOAK_URL`.
+-   `client_secret` - (Optional) The secret for the client used by the provider for authentication via the client credentials grant. This can be found or changed using the "Credentials" tab in the client settings. Defaults to the environment variable `KEYCLOAK_CLIENT_SECRET`. This attribute is required when using the client credentials grant, and cannot be set when using the password grant.
+-   `client_certificate` - (Optional) The TLS client certificate in PEM format when the keycloak server is configured with TLS mutual authentication.
+-   `client_private_key` - (Optional) The TLS client pkcs1 private key in PEM format when the keycloak server is configured with TLS mutual authentication.
+-   `username` - (Optional) The username of the user used by the provider for authentication via the password grant. Defaults to the environment variable `KEYCLOAK_USER`. This attribute is required when using the password grant, and cannot be set when using the client credentials grant.
+-   `password` - (Optional) The password of the user used by the provider for authentication via the password grant. Defaults to the environment variable `KEYCLOAK_PASSWORD`. This attribute is required when using the password grant, and cannot be set when using the client credentials grant.
+-   `realm` - (Optional) The realm used by the provider for authentication. Defaults to the environment variable `KEYCLOAK_REALM`, or `master` if the environment variable is not specified.
+-   `initial_login` - (Optional) Optionally avoid Keycloak login during provider setup, for when Keycloak itself is being provisioned by terraform. Defaults to true, which is the original method.
+-   `client_timeout` - (Optional) Sets the timeout of the client when addressing Keycloak, in seconds. Defaults to the environment variable `KEYCLOAK_CLIENT_TIMEOUT`, or `5` if the environment variable is not specified.
+-   `tls_insecure_skip_verify` - (Optional) Allows ignoring insecure certificates when set to `true`. Defaults to `false`. Disabling this security check is dangerous and should only be done in local or test environments.
+-   `root_ca_certificate` - (Optional) Allows x509 calls using an unknown CA certificate (for development purposes)
+-   `base_path` - (Optional) The base path used for accessing the Keycloak REST API. Defaults to the environment variable `KEYCLOAK_BASE_PATH`, or an empty string if the environment variable is not specified. Note that users of the legacy distribution of Keycloak will need to set this attribute to `/auth`.
+-   `additional_headers` - (Optional) A map of custom HTTP headers to add to each request to the Keycloak API.
