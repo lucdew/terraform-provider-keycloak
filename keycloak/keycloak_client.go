@@ -61,7 +61,7 @@ var redHatSSO7VersionMap = map[int]string{
 	4: "9.0.17",
 }
 
-func NewKeycloakClient(ctx context.Context, url, basePath, clientId, clientSecret, realm, username, password string, initialLogin bool, clientTimeout int, caCert string, tlsInsecureSkipVerify bool, userAgent string, redHatSSO bool, additionalHeaders map[string]string, clientCert string, clientKey string) (*KeycloakClient, error) {
+func NewKeycloakClient(ctx context.Context, url, basePath, clientId, clientSecret, realm, username, password string, initialLogin bool, clientTimeout int, caCert string, tlsInsecureSkipVerify bool, userAgent string, redHatSSO bool, additionalHeaders map[string]string, tlsClientCert string, tlsClientPrivateKey string) (*KeycloakClient, error) {
 	clientCredentials := &ClientCredentials{
 		ClientId:     clientId,
 		ClientSecret: clientSecret,
@@ -80,7 +80,7 @@ func NewKeycloakClient(ctx context.Context, url, basePath, clientId, clientSecre
 		}
 	}
 
-	httpClient, err := newHttpClient(tlsInsecureSkipVerify, clientTimeout, caCert, clientCert, clientKey)
+	httpClient, err := newHttpClient(tlsInsecureSkipVerify, clientTimeout, caCert, tlsClientCert, tlsClientPrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http client: %v", err)
 	}
@@ -499,7 +499,7 @@ func (keycloakClient *KeycloakClient) marshal(body interface{}) ([]byte, error) 
 	return json.Marshal(body)
 }
 
-func newHttpClient(tlsInsecureSkipVerify bool, clientTimeout int, caCert string, clientCert string, clientKey string) (*http.Client, error) {
+func newHttpClient(tlsInsecureSkipVerify bool, clientTimeout int, caCert string, tlsClientCert string, tlsClientPrivateKey string) (*http.Client, error) {
 	cookieJar, err := cookiejar.New(&cookiejar.Options{
 		PublicSuffixList: publicsuffix.List,
 	})
@@ -518,8 +518,8 @@ func newHttpClient(tlsInsecureSkipVerify bool, clientTimeout int, caCert string,
 		transport.TLSClientConfig.RootCAs = caCertPool
 	}
 
-	if clientCert != "" && clientKey != "" {
-		clientKeyPairCert, err := tls.X509KeyPair([]byte(clientCert), []byte(clientKey))
+	if tlsClientCert != "" && tlsClientPrivateKey != "" {
+		clientKeyPairCert, err := tls.X509KeyPair([]byte(tlsClientCert), []byte(tlsClientPrivateKey))
 		if err != nil {
 			return nil, err
 		}

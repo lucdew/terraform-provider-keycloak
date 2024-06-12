@@ -174,6 +174,18 @@ func KeycloakProvider(client *keycloak.KeycloakClient) *schema.Provider {
 				Description: "Allows ignoring insecure certificates when set to true. Defaults to false. Disabling security check is dangerous and should be avoided.",
 				Default:     false,
 			},
+			"tls_client_certificate": {
+				Optional:    true,
+				Type:        schema.TypeString,
+				Description: "TLS client certificate as PEM string for mutual authentication",
+				Default:     "",
+			},
+			"tls_client_private_key": {
+				Optional:    true,
+				Type:        schema.TypeString,
+				Description: "TLS client private key as PEM string for mutual authentication",
+				Default:     "",
+			},
 			"red_hat_sso": {
 				Optional:    true,
 				Type:        schema.TypeBool,
@@ -191,18 +203,6 @@ func KeycloakProvider(client *keycloak.KeycloakClient) *schema.Provider {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
-			},
-			"client_certificate": {
-				Optional:    true,
-				Type:        schema.TypeString,
-				Description: "mTLS client certificate as PEM string",
-				Default:     "",
-			},
-			"client_private_key": {
-				Optional:    true,
-				Type:        schema.TypeString,
-				Description: "mTLS client private key as PEM string",
-				Default:     "",
 			},
 		},
 	}
@@ -222,9 +222,9 @@ func KeycloakProvider(client *keycloak.KeycloakClient) *schema.Provider {
 		initialLogin := data.Get("initial_login").(bool)
 		clientTimeout := data.Get("client_timeout").(int)
 		tlsInsecureSkipVerify := data.Get("tls_insecure_skip_verify").(bool)
+		tlsClientCertificate := data.Get("tls_client_certificate").(string)
+		tlsClientPrivateKey := data.Get("tls_client_private_key").(string)
 		rootCaCertificate := data.Get("root_ca_certificate").(string)
-		clientCertificate := data.Get("client_certificate").(string)
-		clientPrivateKey := data.Get("client_private_key").(string)
 		redHatSSO := data.Get("red_hat_sso").(bool)
 		additionalHeaders := make(map[string]string)
 		for k, v := range data.Get("additional_headers").(map[string]interface{}) {
@@ -235,7 +235,7 @@ func KeycloakProvider(client *keycloak.KeycloakClient) *schema.Provider {
 
 		userAgent := fmt.Sprintf("HashiCorp Terraform/%s (+https://www.terraform.io) Terraform Plugin SDK/%s", provider.TerraformVersion, meta.SDKVersionString())
 
-		keycloakClient, err := keycloak.NewKeycloakClient(ctx, url, basePath, clientId, clientSecret, realm, username, password, initialLogin, clientTimeout, rootCaCertificate, tlsInsecureSkipVerify, userAgent, redHatSSO, additionalHeaders, clientCertificate, clientPrivateKey)
+		keycloakClient, err := keycloak.NewKeycloakClient(ctx, url, basePath, clientId, clientSecret, realm, username, password, initialLogin, clientTimeout, rootCaCertificate, tlsInsecureSkipVerify, userAgent, redHatSSO, additionalHeaders, tlsClientCertificate, tlsClientPrivateKey)
 		if err != nil {
 			diags = append(diags, diag.Diagnostic{
 				Severity: diag.Error,
