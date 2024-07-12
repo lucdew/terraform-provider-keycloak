@@ -1,3 +1,8 @@
+## 4.5.0 (July 12, 2024)
+
+FEATURES:
+
+-  Add the new resource keycloak_saml_hardcoded_attribute_protocol_mapper
 ## 4.4.2 (June 12, 2024)
 
 FEATURES:
