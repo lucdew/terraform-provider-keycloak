@@ -20,6 +20,7 @@ var (
 	addToUserInfoField                   = "userinfo.token.claim"
 	attributeNameField                   = "attribute.name"
 	attributeNameFormatField             = "attribute.nameformat"
+	attributeValueField                  = "attribute.value"
 	claimNameField                       = "claim.name"
 	claimValueField                      = "claim.value"
 	claimValueTypeField                  = "jsonType.label"
