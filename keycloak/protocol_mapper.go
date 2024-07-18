@@ -34,6 +34,7 @@ var (
 	singleValueAttributeField            = "single"
 	userAttributeField                   = "user.attribute"
 	userPropertyField                    = "user.attribute"
+	noteAttributeField                   = "note"
 	userRealmRoleMappingRolePrefixField  = "usermodel.realmRoleMapping.rolePrefix"
 	userClientRoleMappingClientIdField   = "usermodel.clientRoleMapping.clientId"
 	userClientRoleMappingRolePrefixField = "usermodel.clientRoleMapping.rolePrefix"
