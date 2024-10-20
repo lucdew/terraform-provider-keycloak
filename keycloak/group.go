@@ -12,7 +12,7 @@ type Group struct {
 	ParentId      string              `json:"-"`
 	Name          string              `json:"name"`
 	Path          string              `json:"path,omitempty"`
-	SubGroupCount int64               `json:"subGroupCount"`
+	SubGroupCount int                 `json:"subGroupCount,omitempty"`
 	SubGroups     []*Group            `json:"subGroups,omitempty"`
 	RealmRoles    []string            `json:"realmRoles,omitempty"`
 	ClientRoles   map[string][]string `json:"clientRoles,omitempty"`
