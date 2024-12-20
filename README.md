@@ -4,7 +4,7 @@ Terraform provider for [Keycloak](https://www.keycloak.org/) fork of the [terraf
 
 ## Docs
 
-All documentation for this provider can now be found on the Terraform Registry: https://registry.terraform.io/providers/lucdew/keycloak/latest/docs
+All documentation for this provider can now be found on the Terraform Registry: <https://registry.terraform.io/providers/lucdew/keycloak/latest/docs>
 
 ## Installation
 
@@ -15,7 +15,7 @@ terraform {
   required_providers {
     keycloak = {
       source = "lucdew/keycloak"
-      version = ">= 4.7.0"
+      version = ">= 4.8.0"
     }
   }
 }
@@ -41,9 +41,9 @@ This provider will officially support the latest three major versions of Keycloa
 
 The following versions are used when running acceptance tests in CI:
 
--   21.0.1 (latest)
--   20.0.5
--   19.0.2
+- 21.0.1 (latest)
+- 20.0.5
+- 19.0.2
 
 ## Releases
 
@@ -52,7 +52,7 @@ contains binary files for Linux, macOS (darwin), and Windows, as configured with
 file.
 
 Each release also contains a `terraform-provider-keycloak_${RELEASE_VERSION}_SHA256SUMS` file, accompanied by a signature
-created by a PGP key with the fingerprint `C508 6791 5E11 6CD2`. This key can be found on my Keybase account at https://keybase.io/lucdew.
+created by a PGP key with the fingerprint `C508 6791 5E11 6CD2`. This key can be found on my Keybase account at <https://keybase.io/lucdew>.
 
 You can find the list of releases [here](https://github.com/lucdew/terraform-provider-keycloak/releases).
 You can find the changelog for each version [here](https://github.com/lucdew/terraform-provider-keycloak/blob/master/CHANGELOG.md).

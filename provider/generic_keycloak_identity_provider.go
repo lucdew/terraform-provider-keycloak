@@ -3,12 +3,13 @@ package provider
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strings"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/lucdew/terraform-provider-keycloak/keycloak"
-	"reflect"
-	"strings"
 )
 
 var syncModes = []string{
@@ -17,8 +18,10 @@ var syncModes = []string{
 	"LEGACY",
 }
 
-type identityProviderDataGetterFunc func(data *schema.ResourceData) (*keycloak.IdentityProvider, error)
-type identityProviderDataSetterFunc func(data *schema.ResourceData, identityProvider *keycloak.IdentityProvider) error
+type (
+	identityProviderDataGetterFunc func(data *schema.ResourceData) (*keycloak.IdentityProvider, error)
+	identityProviderDataSetterFunc func(data *schema.ResourceData, identityProvider *keycloak.IdentityProvider) error
+)
 
 func resourceKeycloakIdentityProvider() *schema.Resource {
 	return &schema.Resource{
@@ -81,6 +84,12 @@ func resourceKeycloakIdentityProvider() *schema.Resource {
 				Default:     false,
 				Description: "If true, users cannot log in through this provider.  They can only link to this provider.  This is useful if you don't want to allow login from the provider, but want to integrate with a provider",
 			},
+			"hide_on_login": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "If true, hides the idp in the login page.",
+			},
 			"trust_email": {
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -139,6 +148,7 @@ func getIdentityProviderFromData(data *schema.ResourceData) (*keycloak.IdentityP
 		AddReadTokenRoleOnCreate:  data.Get("add_read_token_role_on_create").(bool),
 		AuthenticateByDefault:     data.Get("authenticate_by_default").(bool),
 		LinkOnly:                  data.Get("link_only").(bool),
+		HideOnLogin:               data.Get("hide_on_login").(bool),
 		TrustEmail:                data.Get("trust_email").(bool),
 		FirstBrokerLoginFlowAlias: data.Get("first_broker_login_flow_alias").(string),
 		PostBrokerLoginFlowAlias:  data.Get("post_broker_login_flow_alias").(string),
@@ -158,6 +168,7 @@ func setIdentityProviderData(data *schema.ResourceData, identityProvider *keyclo
 	data.Set("add_read_token_role_on_create", identityProvider.AddReadTokenRoleOnCreate)
 	data.Set("authenticate_by_default", identityProvider.AuthenticateByDefault)
 	data.Set("link_only", identityProvider.LinkOnly)
+	data.Set("hide_on_login", identityProvider.HideOnLogin)
 	data.Set("trust_email", identityProvider.TrustEmail)
 	data.Set("first_broker_login_flow_alias", identityProvider.FirstBrokerLoginFlowAlias)
 	data.Set("post_broker_login_flow_alias", identityProvider.PostBrokerLoginFlowAlias)
@@ -197,6 +208,15 @@ func resourceKeycloakIdentityProviderCreate(getIdentityProviderFromData identity
 		identityProvider, err := getIdentityProviderFromData(data)
 		if err != nil {
 			return diag.FromErr(err)
+		}
+
+		versionOk, err := keycloakClient.VersionIsGreaterThanOrEqualTo(ctx, keycloak.Version_26)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		if versionOk && data.Get("hide_on_login_page").(bool) {
+			data.Set("hide_on_login", true)
+			identityProvider.HideOnLogin = true
 		}
 
 		if err = keycloakClient.NewIdentityProvider(ctx, identityProvider); err != nil {

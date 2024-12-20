@@ -3,8 +3,9 @@ package keycloak
 import (
 	"context"
 	"fmt"
-	"github.com/lucdew/terraform-provider-keycloak/keycloak/types"
 	"reflect"
+
+	"github.com/lucdew/terraform-provider-keycloak/keycloak/types"
 )
 
 type IdentityProviderConfig struct {
@@ -65,6 +66,7 @@ type IdentityProvider struct {
 	AddReadTokenRoleOnCreate  bool                    `json:"addReadTokenRoleOnCreate"`
 	AuthenticateByDefault     bool                    `json:"authenticateByDefault"`
 	LinkOnly                  bool                    `json:"linkOnly"`
+	HideOnLogin               bool                    `json:"hideOnLogin"`
 	TrustEmail                bool                    `json:"trustEmail"`
 	FirstBrokerLoginFlowAlias string                  `json:"firstBrokerLoginFlowAlias"`
 	PostBrokerLoginFlowAlias  string                  `json:"postBrokerLoginFlowAlias"`

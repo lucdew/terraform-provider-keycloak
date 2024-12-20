@@ -1,3 +1,10 @@
+## 4.8.0 (Dec 20, 2024)
+
+FEATURES:
+
+- Update identity provider resource to support Keycloak 26 hideOnLogin attribute.
+    Keep the hide_on_login_page resource configuration parameter.
+
 ## 4.7.0 (July 18, 2024)
 
 FEATURES:
