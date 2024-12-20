@@ -53,12 +53,6 @@ func resourceKeycloakOidcIdentityProvider() *schema.Resource {
 			Optional:    true,
 			Description: "JSON Web Key Set URL",
 		},
-		"hide_on_login_page": {
-			Type:        schema.TypeBool,
-			Optional:    true,
-			Default:     false,
-			Description: "Hide On Login Page.",
-		},
 		"token_url": {
 			Type:        schema.TypeString,
 			Required:    true,
@@ -123,7 +117,6 @@ func getOidcIdentityProviderFromData(data *schema.ResourceData) (*keycloak.Ident
 		AuthorizationUrl:            data.Get("authorization_url").(string),
 		ClientId:                    data.Get("client_id").(string),
 		ClientSecret:                data.Get("client_secret").(string),
-		HideOnLoginPage:             types.KeycloakBoolQuoted(data.Get("hide_on_login_page").(bool)),
 		TokenUrl:                    data.Get("token_url").(string),
 		LogoutUrl:                   data.Get("logout_url").(string),
 		UILocales:                   types.KeycloakBoolQuoted(data.Get("ui_locales").(bool)),
@@ -156,7 +149,6 @@ func setOidcIdentityProviderData(data *schema.ResourceData, identityProvider *ke
 	data.Set("client_id", identityProvider.Config.ClientId)
 	data.Set("disable_user_info", identityProvider.Config.DisableUserInfo)
 	data.Set("user_info_url", identityProvider.Config.UserInfoUrl)
-	data.Set("hide_on_login_page", identityProvider.Config.HideOnLoginPage)
 	data.Set("token_url", identityProvider.Config.TokenUrl)
 	data.Set("login_hint", identityProvider.Config.LoginHint)
 	data.Set("ui_locales", identityProvider.Config.UILocales)

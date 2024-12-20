@@ -62,11 +62,6 @@ func resourceKeycloakSamlIdentityProvider() *schema.Resource {
 			Optional:    true,
 			Description: "Enable/disable signature validation of SAML responses.",
 		},
-		"hide_on_login_page": {
-			Type:        schema.TypeBool,
-			Optional:    true,
-			Description: "Hide On Login Page.",
-		},
 		"name_id_policy_format": {
 			Type:         schema.TypeString,
 			Optional:     true,
@@ -199,7 +194,6 @@ func getSamlIdentityProviderFromData(data *schema.ResourceData) (*keycloak.Ident
 
 	samlIdentityProviderConfig := &keycloak.IdentityProviderConfig{
 		ValidateSignature:               types.KeycloakBoolQuoted(data.Get("validate_signature").(bool)),
-		HideOnLoginPage:                 types.KeycloakBoolQuoted(data.Get("hide_on_login_page").(bool)),
 		BackchannelSupported:            types.KeycloakBoolQuoted(data.Get("backchannel_supported").(bool)),
 		NameIDPolicyFormat:              nameIdPolicyFormats[data.Get("name_id_policy_format").(string)],
 		EntityId:                        data.Get("entity_id").(string),
@@ -248,7 +242,6 @@ func setSamlIdentityProviderData(data *schema.ResourceData, identityProvider *ke
 
 	data.Set("backchannel_supported", identityProvider.Config.BackchannelSupported)
 	data.Set("validate_signature", identityProvider.Config.ValidateSignature)
-	data.Set("hide_on_login_page", identityProvider.Config.HideOnLoginPage)
 	data.Set("name_id_policy_format", nameIDPolicyFormat)
 	data.Set("entity_id", identityProvider.Config.EntityId)
 	data.Set("single_logout_service_url", identityProvider.Config.SingleLogoutServiceUrl)

@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/lucdew/terraform-provider-keycloak/keycloak"
+	"github.com/lucdew/terraform-provider-keycloak/keycloak/types"
 )
 
 var syncModes = []string{
@@ -84,7 +85,7 @@ func resourceKeycloakIdentityProvider() *schema.Resource {
 				Default:     false,
 				Description: "If true, users cannot log in through this provider.  They can only link to this provider.  This is useful if you don't want to allow login from the provider, but want to integrate with a provider",
 			},
-			"hide_on_login": {
+			"hide_on_login_page": {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
@@ -148,7 +149,7 @@ func getIdentityProviderFromData(data *schema.ResourceData) (*keycloak.IdentityP
 		AddReadTokenRoleOnCreate:  data.Get("add_read_token_role_on_create").(bool),
 		AuthenticateByDefault:     data.Get("authenticate_by_default").(bool),
 		LinkOnly:                  data.Get("link_only").(bool),
-		HideOnLogin:               data.Get("hide_on_login").(bool),
+		HideOnLogin:               data.Get("hide_on_login_page").(bool),
 		TrustEmail:                data.Get("trust_email").(bool),
 		FirstBrokerLoginFlowAlias: data.Get("first_broker_login_flow_alias").(string),
 		PostBrokerLoginFlowAlias:  data.Get("post_broker_login_flow_alias").(string),
@@ -168,7 +169,7 @@ func setIdentityProviderData(data *schema.ResourceData, identityProvider *keyclo
 	data.Set("add_read_token_role_on_create", identityProvider.AddReadTokenRoleOnCreate)
 	data.Set("authenticate_by_default", identityProvider.AuthenticateByDefault)
 	data.Set("link_only", identityProvider.LinkOnly)
-	data.Set("hide_on_login", identityProvider.HideOnLogin)
+	data.Set("hide_on_login_page", identityProvider.HideOnLogin)
 	data.Set("trust_email", identityProvider.TrustEmail)
 	data.Set("first_broker_login_flow_alias", identityProvider.FirstBrokerLoginFlowAlias)
 	data.Set("post_broker_login_flow_alias", identityProvider.PostBrokerLoginFlowAlias)
@@ -214,9 +215,8 @@ func resourceKeycloakIdentityProviderCreate(getIdentityProviderFromData identity
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		if versionOk && data.Get("hide_on_login_page").(bool) {
-			data.Set("hide_on_login", true)
-			identityProvider.HideOnLogin = true
+		if !versionOk && data.Get("hide_on_login_page").(bool) {
+			identityProvider.Config.HideOnLoginPage = types.KeycloakBoolQuoted(true)
 		}
 
 		if err = keycloakClient.NewIdentityProvider(ctx, identityProvider); err != nil {
@@ -239,6 +239,14 @@ func resourceKeycloakIdentityProviderRead(setDataFromIdentityProvider identityPr
 			return handleNotFoundError(ctx, err, data)
 		}
 
+		versionOk, err := keycloakClient.VersionIsGreaterThanOrEqualTo(ctx, keycloak.Version_26)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		if !versionOk && bool(identityProvider.Config.HideOnLoginPage) {
+			data.Set("hide_on_login_page", true)
+		}
+
 		return diag.FromErr(setDataFromIdentityProvider(data, identityProvider))
 	}
 }
@@ -249,6 +257,14 @@ func resourceKeycloakIdentityProviderUpdate(getIdentityProviderFromData identity
 		identityProvider, err := getIdentityProviderFromData(data)
 		if err != nil {
 			return diag.FromErr(err)
+		}
+
+		versionOk, err := keycloakClient.VersionIsGreaterThanOrEqualTo(ctx, keycloak.Version_26)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		if !versionOk && data.Get("hide_on_login_page").(bool) {
+			identityProvider.Config.HideOnLoginPage = types.KeycloakBoolQuoted(true)
 		}
 
 		err = keycloakClient.UpdateIdentityProvider(ctx, identityProvider)
