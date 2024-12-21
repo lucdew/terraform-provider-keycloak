@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/imdario/mergo"
@@ -61,6 +62,11 @@ func resourceKeycloakSamlIdentityProvider() *schema.Resource {
 			Type:        schema.TypeBool,
 			Optional:    true,
 			Description: "Enable/disable signature validation of SAML responses.",
+		},
+		"hide_on_login_page": {
+			Type:        schema.TypeBool,
+			Optional:    true,
+			Description: "Hide On Login Page.",
 		},
 		"name_id_policy_format": {
 			Type:         schema.TypeString,
@@ -178,8 +184,8 @@ func resourceKeycloakSamlIdentityProvider() *schema.Resource {
 	return samlResource
 }
 
-func getSamlIdentityProviderFromData(data *schema.ResourceData) (*keycloak.IdentityProvider, error) {
-	rec, defaultConfig := getIdentityProviderFromData(data)
+func getSamlIdentityProviderFromData(data *schema.ResourceData, keycloakVersion *version.Version) (*keycloak.IdentityProvider, error) {
+	rec, defaultConfig := getIdentityProviderFromData(data, keycloakVersion)
 	rec.ProviderId = data.Get("provider_id").(string)
 
 	var authnContextClassRefs types.KeycloakSliceQuoted
@@ -214,6 +220,9 @@ func getSamlIdentityProviderFromData(data *schema.ResourceData) (*keycloak.Ident
 		AuthnContextClassRefs:           authnContextClassRefs,
 		AuthnContextComparisonType:      data.Get("authn_context_comparison_type").(string),
 		AuthnContextDeclRefs:            authnContextDeclRefs,
+
+		// since keycloak v26 moved to IdentityProvider - still here fore backward compatibility
+		HideOnLoginPage: types.KeycloakBoolQuoted(data.Get("hide_on_login_page").(bool)),
 	}
 
 	if _, ok := data.GetOk("signature_algorithm"); ok {
@@ -229,8 +238,8 @@ func getSamlIdentityProviderFromData(data *schema.ResourceData) (*keycloak.Ident
 	return rec, nil
 }
 
-func setSamlIdentityProviderData(data *schema.ResourceData, identityProvider *keycloak.IdentityProvider) error {
-	setIdentityProviderData(data, identityProvider)
+func setSamlIdentityProviderData(data *schema.ResourceData, identityProvider *keycloak.IdentityProvider, keycloakVersion *version.Version) error {
+	setIdentityProviderData(data, identityProvider, keycloakVersion)
 
 	var nameIDPolicyFormat string
 	for k, v := range nameIdPolicyFormats {
@@ -261,6 +270,12 @@ func setSamlIdentityProviderData(data *schema.ResourceData, identityProvider *ke
 	data.Set("authn_context_class_refs", identityProvider.Config.AuthnContextClassRefs)
 	data.Set("authn_context_comparison_type", identityProvider.Config.AuthnContextComparisonType)
 	data.Set("authn_context_decl_refs", identityProvider.Config.AuthnContextDeclRefs)
+
+	if keycloakVersion.LessThan(keycloak.Version_26.AsVersion()) {
+		// Since keycloak v26 the attribute "hideOnLoginPage" is not part of the identity provider config anymore!
+		data.Set("hide_on_login_page", identityProvider.Config.HideOnLoginPage)
+		return nil
+	}
 
 	return nil
 }

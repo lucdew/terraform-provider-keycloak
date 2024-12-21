@@ -15,7 +15,7 @@ terraform {
   required_providers {
     keycloak = {
       source = "lucdew/keycloak"
-      version = ">= 4.8.1"
+      version = ">= 4.8.2"
     }
   }
 }

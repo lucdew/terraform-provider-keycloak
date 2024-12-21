@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/imdario/mergo"
 	"github.com/lucdew/terraform-provider-keycloak/keycloak"
@@ -52,6 +53,12 @@ func resourceKeycloakOidcIdentityProvider() *schema.Resource {
 			Type:        schema.TypeString,
 			Optional:    true,
 			Description: "JSON Web Key Set URL",
+		},
+		"hide_on_login_page": {
+			Type:        schema.TypeBool,
+			Optional:    true,
+			Default:     false,
+			Description: "Hide On Login Page.",
 		},
 		"token_url": {
 			Type:        schema.TypeString,
@@ -106,8 +113,8 @@ func resourceKeycloakOidcIdentityProvider() *schema.Resource {
 	return oidcResource
 }
 
-func getOidcIdentityProviderFromData(data *schema.ResourceData) (*keycloak.IdentityProvider, error) {
-	rec, defaultConfig := getIdentityProviderFromData(data)
+func getOidcIdentityProviderFromData(data *schema.ResourceData, keycloakVersion *version.Version) (*keycloak.IdentityProvider, error) {
+	rec, defaultConfig := getIdentityProviderFromData(data, keycloakVersion)
 	rec.ProviderId = data.Get("provider_id").(string)
 	_, useJwksUrl := data.GetOk("jwks_url")
 
@@ -128,6 +135,9 @@ func getOidcIdentityProviderFromData(data *schema.ResourceData) (*keycloak.Ident
 		DefaultScope:                data.Get("default_scopes").(string),
 		AcceptsPromptNoneForwFrmClt: types.KeycloakBoolQuoted(data.Get("accepts_prompt_none_forward_from_client").(bool)),
 		Issuer:                      data.Get("issuer").(string),
+
+		// since keycloak v26 moved to IdentityProvider - still here fore backward compatibility
+		HideOnLoginPage: types.KeycloakBoolQuoted(data.Get("hide_on_login_page").(bool)),
 	}
 
 	if err := mergo.Merge(oidcIdentityProviderConfig, defaultConfig); err != nil {
@@ -139,8 +149,8 @@ func getOidcIdentityProviderFromData(data *schema.ResourceData) (*keycloak.Ident
 	return rec, nil
 }
 
-func setOidcIdentityProviderData(data *schema.ResourceData, identityProvider *keycloak.IdentityProvider) error {
-	setIdentityProviderData(data, identityProvider)
+func setOidcIdentityProviderData(data *schema.ResourceData, identityProvider *keycloak.IdentityProvider, keycloakVersion *version.Version) error {
+	setIdentityProviderData(data, identityProvider, keycloakVersion)
 	data.Set("backchannel_supported", identityProvider.Config.BackchannelSupported)
 	data.Set("jwks_url", identityProvider.Config.JwksUrl)
 	data.Set("logout_url", identityProvider.Config.LogoutUrl)
@@ -153,5 +163,12 @@ func setOidcIdentityProviderData(data *schema.ResourceData, identityProvider *ke
 	data.Set("login_hint", identityProvider.Config.LoginHint)
 	data.Set("ui_locales", identityProvider.Config.UILocales)
 	data.Set("issuer", identityProvider.Config.Issuer)
+
+	if keycloakVersion.LessThan(keycloak.Version_26.AsVersion()) {
+		// Since keycloak v26 the attribute "hideOnLoginPage" is not part of the identity provider config anymore!
+		data.Set("hide_on_login_page", identityProvider.Config.HideOnLoginPage)
+		return nil
+	}
+
 	return nil
 }

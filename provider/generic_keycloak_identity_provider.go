@@ -6,11 +6,11 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/lucdew/terraform-provider-keycloak/keycloak"
-	"github.com/lucdew/terraform-provider-keycloak/keycloak/types"
 )
 
 var syncModes = []string{
@@ -20,8 +20,8 @@ var syncModes = []string{
 }
 
 type (
-	identityProviderDataGetterFunc func(data *schema.ResourceData) (*keycloak.IdentityProvider, error)
-	identityProviderDataSetterFunc func(data *schema.ResourceData, identityProvider *keycloak.IdentityProvider) error
+	identityProviderDataGetterFunc func(data *schema.ResourceData, keycloakVersion *version.Version) (*keycloak.IdentityProvider, error)
+	identityProviderDataSetterFunc func(data *schema.ResourceData, identityProvider *keycloak.IdentityProvider, keycloakVersion *version.Version) error
 )
 
 func resourceKeycloakIdentityProvider() *schema.Resource {
@@ -132,7 +132,7 @@ func resourceKeycloakIdentityProvider() *schema.Resource {
 	}
 }
 
-func getIdentityProviderFromData(data *schema.ResourceData) (*keycloak.IdentityProvider, *keycloak.IdentityProviderConfig) {
+func getIdentityProviderFromData(data *schema.ResourceData, keycloakVersion *version.Version) (*keycloak.IdentityProvider, *keycloak.IdentityProviderConfig) {
 	// some identity provider config is shared among all identity providers, so this default config will be used as a base to merge extra config into
 	defaultIdentityProviderConfig := &keycloak.IdentityProviderConfig{
 		GuiOrder:    data.Get("gui_order").(string),
@@ -140,7 +140,7 @@ func getIdentityProviderFromData(data *schema.ResourceData) (*keycloak.IdentityP
 		ExtraConfig: getExtraConfigFromData(data),
 	}
 
-	return &keycloak.IdentityProvider{
+	identityProvider := &keycloak.IdentityProvider{
 		Realm:                     data.Get("realm").(string),
 		Alias:                     data.Get("alias").(string),
 		DisplayName:               data.Get("display_name").(string),
@@ -154,10 +154,17 @@ func getIdentityProviderFromData(data *schema.ResourceData) (*keycloak.IdentityP
 		FirstBrokerLoginFlowAlias: data.Get("first_broker_login_flow_alias").(string),
 		PostBrokerLoginFlowAlias:  data.Get("post_broker_login_flow_alias").(string),
 		InternalId:                data.Get("internal_id").(string),
-	}, defaultIdentityProviderConfig
+	}
+
+	if keycloakVersion.GreaterThanOrEqual(keycloak.Version_26.AsVersion()) {
+		// Since keycloak v26 the attribute is moved from Config to Provider.
+		identityProvider.HideOnLogin = data.Get("hide_on_login_page").(bool)
+	}
+
+	return identityProvider, defaultIdentityProviderConfig
 }
 
-func setIdentityProviderData(data *schema.ResourceData, identityProvider *keycloak.IdentityProvider) {
+func setIdentityProviderData(data *schema.ResourceData, identityProvider *keycloak.IdentityProvider, keycloakVersion *version.Version) {
 	data.SetId(identityProvider.Alias)
 
 	data.Set("internal_id", identityProvider.InternalId)
@@ -169,10 +176,13 @@ func setIdentityProviderData(data *schema.ResourceData, identityProvider *keyclo
 	data.Set("add_read_token_role_on_create", identityProvider.AddReadTokenRoleOnCreate)
 	data.Set("authenticate_by_default", identityProvider.AuthenticateByDefault)
 	data.Set("link_only", identityProvider.LinkOnly)
-	data.Set("hide_on_login_page", identityProvider.HideOnLogin)
 	data.Set("trust_email", identityProvider.TrustEmail)
 	data.Set("first_broker_login_flow_alias", identityProvider.FirstBrokerLoginFlowAlias)
 	data.Set("post_broker_login_flow_alias", identityProvider.PostBrokerLoginFlowAlias)
+
+	if keycloakVersion.GreaterThanOrEqual(keycloak.Version_26.AsVersion()) {
+		data.Set("hide_on_login_page", identityProvider.HideOnLogin)
+	}
 
 	// identity provider config
 	data.Set("gui_order", identityProvider.Config.GuiOrder)
@@ -206,23 +216,16 @@ func resourceKeycloakIdentityProviderImport(_ context.Context, d *schema.Resourc
 func resourceKeycloakIdentityProviderCreate(getIdentityProviderFromData identityProviderDataGetterFunc, setDataFromIdentityProvider identityProviderDataSetterFunc) func(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return func(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
 		keycloakClient := meta.(*keycloak.KeycloakClient)
-		identityProvider, err := getIdentityProviderFromData(data)
+		keycloakVersion := keycloakClient.Version()
+		identityProvider, err := getIdentityProviderFromData(data, keycloakVersion)
 		if err != nil {
 			return diag.FromErr(err)
-		}
-
-		versionOk, err := keycloakClient.VersionIsGreaterThanOrEqualTo(ctx, keycloak.Version_26)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		if !versionOk && data.Get("hide_on_login_page").(bool) {
-			identityProvider.Config.HideOnLoginPage = types.KeycloakBoolQuoted(true)
 		}
 
 		if err = keycloakClient.NewIdentityProvider(ctx, identityProvider); err != nil {
 			return diag.FromErr(err)
 		}
-		if err = setDataFromIdentityProvider(data, identityProvider); err != nil {
+		if err = setDataFromIdentityProvider(data, identityProvider, keycloakVersion); err != nil {
 			return diag.FromErr(err)
 		}
 		return resourceKeycloakIdentityProviderRead(setDataFromIdentityProvider)(ctx, data, meta)
@@ -232,6 +235,8 @@ func resourceKeycloakIdentityProviderCreate(getIdentityProviderFromData identity
 func resourceKeycloakIdentityProviderRead(setDataFromIdentityProvider identityProviderDataSetterFunc) func(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return func(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
 		keycloakClient := meta.(*keycloak.KeycloakClient)
+		keycloakVersion := keycloakClient.Version()
+
 		realm := data.Get("realm").(string)
 		alias := data.Get("alias").(string)
 		identityProvider, err := keycloakClient.GetIdentityProvider(ctx, realm, alias)
@@ -239,32 +244,17 @@ func resourceKeycloakIdentityProviderRead(setDataFromIdentityProvider identityPr
 			return handleNotFoundError(ctx, err, data)
 		}
 
-		versionOk, err := keycloakClient.VersionIsGreaterThanOrEqualTo(ctx, keycloak.Version_26)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		if !versionOk && bool(identityProvider.Config.HideOnLoginPage) {
-			data.Set("hide_on_login_page", true)
-		}
-
-		return diag.FromErr(setDataFromIdentityProvider(data, identityProvider))
+		return diag.FromErr(setDataFromIdentityProvider(data, identityProvider, keycloakVersion))
 	}
 }
 
 func resourceKeycloakIdentityProviderUpdate(getIdentityProviderFromData identityProviderDataGetterFunc, setDataFromIdentityProvider identityProviderDataSetterFunc) func(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return func(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
 		keycloakClient := meta.(*keycloak.KeycloakClient)
-		identityProvider, err := getIdentityProviderFromData(data)
+		keycloakVersion := keycloakClient.Version()
+		identityProvider, err := getIdentityProviderFromData(data, keycloakVersion)
 		if err != nil {
 			return diag.FromErr(err)
-		}
-
-		versionOk, err := keycloakClient.VersionIsGreaterThanOrEqualTo(ctx, keycloak.Version_26)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		if !versionOk && data.Get("hide_on_login_page").(bool) {
-			identityProvider.Config.HideOnLoginPage = types.KeycloakBoolQuoted(true)
 		}
 
 		err = keycloakClient.UpdateIdentityProvider(ctx, identityProvider)
@@ -272,6 +262,6 @@ func resourceKeycloakIdentityProviderUpdate(getIdentityProviderFromData identity
 			return diag.FromErr(err)
 		}
 
-		return diag.FromErr(setDataFromIdentityProvider(data, identityProvider))
+		return diag.FromErr(setDataFromIdentityProvider(data, identityProvider, keycloakVersion))
 	}
 }

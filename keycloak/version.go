@@ -26,6 +26,18 @@ const (
 	Version_26 Version = "26.0.0"
 )
 
+func (v Version) AsVersion() *version.Version {
+	vv, err := version.NewVersion(string(v))
+	if err != nil {
+		return nil
+	}
+	return vv
+}
+
+func (KeycloakClient *KeycloakClient) Version() *version.Version {
+	return KeycloakClient.version
+}
+
 func (keycloakClient *KeycloakClient) VersionIsGreaterThanOrEqualTo(ctx context.Context, versionString Version) (bool, error) {
 	if keycloakClient.version == nil {
 		err := keycloakClient.login(ctx)
