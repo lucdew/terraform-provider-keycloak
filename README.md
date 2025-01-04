@@ -76,9 +76,30 @@ build you can use the `linux_amd64` build as long as `libc6-compat` is installed
 ## Development
 
 This project requires Go 1.22 and Terraform 1.4.1.
-This project uses [Go Modules](https://github.com/golang/go/wiki/Modules) for dependency management, which allows this project to exist outside of an existing GOPATH.
+This project uses [Go Modules](https://github.com/golang/go/wiki/Modules) for dependency management, which allows this project to exist outside an existing GOPATH.
 
 After cloning the repository, you can build the project by running `make build`.
+
+### Debugging
+
+We support remote debugging via [delve](https://github.com/go-delve/delve) via the make target `build-debug` and `run-debug`.
+
+To debug the plugin, proceed as follows:
+1) Run `make build-debug`
+2) Run `make run-debug`
+3) Attach a remote debugger to the printed local address, e.g. `127.0.0.1:58772` from your IDE.
+4) Copy the `TF_REATTACH_PROVIDERS='{...}'` env variable, that is printed by the delve debugger after attachment.
+5) In a separate terminal prepend the `TF_REATTACH_PROVIDERS='{...}'` env variable to your `terraform ...` command
+
+Note that we use the delve options to wait for a debugger. This allows us to debug the complete
+plugin lifecycle.
+
+Note for Goland users, there is a preconfigured remote debugger configuration called `local debug`.
+
+### Debugging Example
+
+The easiest way to play with the remote debugger setup is the bundled example project.
+To use that run `make build-example-debug` and follow the steps above.
 
 ### Local Environment
 
@@ -104,6 +125,20 @@ KEYCLOAK_REALM=master \
 KEYCLOAK_TEST_PASSWORD_GRANT=true \
 KEYCLOAK_URL="http://localhost:8080" \
 make testacc
+```
+
+### Run examples
+
+You can run examples against a Keycloak instance.
+Follow the commands for running examples against a local environment that was created via `make local`:
+
+```
+make build-example
+cd example
+terraform init
+terraform plan -out tfplan
+terraform apply tfplan
+rm tfplan
 ```
 
 ## Acknowledgments
