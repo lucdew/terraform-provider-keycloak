@@ -149,7 +149,6 @@ func getIdentityProviderFromData(data *schema.ResourceData, keycloakVersion *ver
 		AddReadTokenRoleOnCreate:  data.Get("add_read_token_role_on_create").(bool),
 		AuthenticateByDefault:     data.Get("authenticate_by_default").(bool),
 		LinkOnly:                  data.Get("link_only").(bool),
-		HideOnLogin:               data.Get("hide_on_login_page").(bool),
 		TrustEmail:                data.Get("trust_email").(bool),
 		FirstBrokerLoginFlowAlias: data.Get("first_broker_login_flow_alias").(string),
 		PostBrokerLoginFlowAlias:  data.Get("post_broker_login_flow_alias").(string),

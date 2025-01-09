@@ -1,4 +1,11 @@
-## 4.8.2 (Dec 21, 2024)
+## 4.8.4 (Jan 9, 2025)
+
+BUG FIX:
+
+- Fix the hideOnLogin attribute wrongly set on the identity provider for Keycloak < 26.
+
+
+## 4.8.3 (Dec 21, 2024)
 
 FEATURES:
 
