@@ -14,13 +14,16 @@ import (
 	"time"
 )
 
-var testAccProviderFactories map[string]func() (*schema.Provider, error)
-var testAccProvider *schema.Provider
-var keycloakClient *keycloak.KeycloakClient
-var testAccRealm *keycloak.Realm
-var testAccRealmTwo *keycloak.Realm
-var testAccRealmUserFederation *keycloak.Realm
-var testCtx context.Context
+var (
+	testAccProviderFactories   map[string]func() (*schema.Provider, error)
+	testAccProvider            *schema.Provider
+	keycloakClient             *keycloak.KeycloakClient
+	testAccRealm               *keycloak.Realm
+	testAccRealmTwo            *keycloak.Realm
+	testAccRealmUserFederation *keycloak.Realm
+	testAccRealmAllGroups      *keycloak.Realm
+	testCtx                    context.Context
+)
 
 var requiredEnvironmentVariables = []string{
 	"KEYCLOAK_CLIENT_ID",
@@ -74,6 +77,7 @@ func TestMain(m *testing.M) {
 	testAccRealm = createTestRealm(testCtx)
 	testAccRealmTwo = createTestRealm(testCtx)
 	testAccRealmUserFederation = createTestRealm(testCtx)
+	testAccRealmAllGroups = createTestRealm(testCtx)
 
 	code := m.Run()
 
@@ -91,6 +95,11 @@ func TestMain(m *testing.M) {
 	err = keycloakClient.DeleteRealm(testCtx, testAccRealmUserFederation.Realm)
 	if err != nil {
 		log.Printf("Unable to delete realm %s: %s", testAccRealmUserFederation.Realm, err)
+	}
+
+	err = keycloakClient.DeleteRealm(testCtx, testAccRealmAllGroups.Realm)
+	if err != nil {
+		log.Printf("Unable to delete realm %s: %s", testAccRealmAllGroups.Realm, err)
 	}
 
 	os.Exit(code)

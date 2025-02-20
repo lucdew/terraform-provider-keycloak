@@ -106,5 +106,5 @@ data "keycloak_groups" "all_groups" {
 	depends_on = [keycloak_group.group_0_b, keycloak_group.group_0_a_1_a_2_a, keycloak_group.group_0_a_1_a_2_b]
 }
 
-	`, testAccRealm.Realm, group, group, group, group, group)
+	`, testAccRealmAllGroups.Realm, group, group, group, group, group)
 }
