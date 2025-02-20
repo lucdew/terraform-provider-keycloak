@@ -103,7 +103,7 @@ data "keycloak_groups" "all_groups" {
 	realm_id = data.keycloak_realm.realm.id
 	full_hierarchy= true
 
-	depends_on = [keycloak_group.group_0_a_1_a_2_a, keycloak_group.group_0_a_1_a_2_b ]
+	depends_on = [keycloak_group.group_0_b, keycloak_group.group_0_a_1_a_2_a, keycloak_group.group_0_a_1_a_2_b]
 }
 
 	`, testAccRealm.Realm, group, group, group, group, group)
