@@ -139,6 +139,7 @@ func (keycloakClient *KeycloakClient) GetFlattenedGroupsHierarchy(ctx context.Co
 
 	for idx, group := range groups {
 		groupsPtr[idx] = *group
+		fmt.Printf("Adding group=%v", *group)
 		if group.SubGroupCount > 0 {
 			err := keycloakClient.appendChildGroups(ctx, &groupsPtr, realmId, group.Id, fullHierarchy)
 			if err != nil {
@@ -251,7 +252,7 @@ func (keycloakClient *KeycloakClient) ListGroupsWithName(ctx context.Context, re
 
 func (keycloakClient *KeycloakClient) GetGroupMembers(ctx context.Context, realmId, groupId string) ([]*User, error) {
 	var users []*User
-	var first, pagination = 0, 50
+	first, pagination := 0, 50
 	var iterationUsers []*User
 
 	for ok := true; ok; ok = len(iterationUsers) > 0 {
