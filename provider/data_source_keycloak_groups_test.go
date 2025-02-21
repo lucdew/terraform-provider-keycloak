@@ -23,6 +23,7 @@ func TestAccKeycloakDataSourceGroups_full_hierarchy(t *testing.T) {
 				Config: testDataSourceKeycloakGroups_full_hierarchy(groupPrefix),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckKeycloakGroupExists("keycloak_group.group_0_a"),
+					testAccCheckKeycloakGroupExists("keycloak_group.group_0_a_1_a_2_b"),
 					testAccCheckDataKeycloakGroups(groupPrefix, "data.keycloak_groups.all_groups"),
 				),
 			},
