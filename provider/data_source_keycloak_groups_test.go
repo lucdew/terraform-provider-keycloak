@@ -42,6 +42,13 @@ func testAccCheckDataKeycloakGroups(groupPrefix string, resourceName string) res
 			return fmt.Errorf("no id for groups")
 		}
 
+		// debug failed tests in CI
+		rs_realm, ok := s.RootModule().Resources["data.keycloak_realm.realm"]
+		if !ok {
+			return fmt.Errorf("resource not found: %s", "data.keycloak_realm.realm")
+		}
+		fmt.Printf("realmid=%s, groups=%v", rs_realm.Primary.Attributes["id"], rs.Primary.Attributes)
+
 		if len(rs.Primary.Attributes["groups.#"]) == 0 {
 			return fmt.Errorf("no groups exist")
 		}
