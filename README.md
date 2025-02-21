@@ -1,6 +1,13 @@
 # terraform-provider-keycloak
 Terraform provider for [Keycloak](https://www.keycloak.org/).
 
+Fork of the [official Terraform provider for Keycloak](https://github.com/keycloak/terraform-provider-keycloak/).
+
+It adds mTLS support and a couple of resources/datasources not present in the official provider (see the [CHANGELOG-FORK.md](CHANGELOG-FORK.md) )
+Pull requests have been submitted in the official provider for them.
+Only submit issues/pull requests for these features, not the official provider.
+The documentation below is the one of the official provider.
+
 ## Migration to the new provider
 
 To migrate from `mrparkers/keycloak` to the `keycloak/keycloak` Terraform provider, you can use the `terraform state replace-provider` command:
