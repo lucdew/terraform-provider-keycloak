@@ -111,15 +111,9 @@ func (keycloakClient *KeycloakClient) GetGroups(ctx context.Context, realmId str
 func (keycloakClient *KeycloakClient) appendChildGroups(ctx context.Context, groupsAcc *[]*Group, levelGroups []*Group, realmId string, fullHierarchy bool) error {
 	nextLevelGroups := make([]*Group, 0)
 
-	// SubGroupCount attribute only exist since KC 23
-	kcIsLowerThan23, err := keycloakClient.VersionIsLessThan(ctx, Version_23)
-	if err != nil {
-		return err
-	}
-
 	for _, group := range levelGroups {
 		group.RealmId = realmId
-		if fullHierarchy && (kcIsLowerThan23 || group.SubGroupCount > 0) {
+		if fullHierarchy && group.SubGroupCount > 0 {
 
 			var groups []*Group
 			err := keycloakClient.get(ctx, fmt.Sprintf("/realms/%s/groups/%s/children", realmId, group.Id), &groups, nil)

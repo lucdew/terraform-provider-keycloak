@@ -7,9 +7,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/keycloak/terraform-provider-keycloak/keycloak"
 )
 
 func TestAccKeycloakDataSourceGroups_full_hierarchy(t *testing.T) {
+	if ok, _ := keycloakClient.VersionIsLessThan(testCtx, keycloak.Version_23); !ok {
+		t.Skip()
+	}
 	t.Parallel()
 
 	groupPrefix := acctest.RandomWithPrefix("tf-acc")
