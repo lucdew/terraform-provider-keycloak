@@ -6,6 +6,9 @@ page_title: "keycloak_groups Data Source"
 
 This data source can be used to retrieve all groups.
 
+Information for Keycloak versions < 23:
+the datasource will only return the top level groups.
+
 ## Example Usage
 
 ```hcl
@@ -28,8 +31,8 @@ output "group_paths" {
 
 ## Argument Reference
 
--   `realm_id` - (Required) The realm this group exists within.
--   `full_hierarchy` - (Optional) Retrieve the whole groups hierachy.
+- `realm_id` - (Required) The realm this group exists within.
+- `full_hierarchy` - (Optional) Retrieve the whole groups hierachy.
 
 ## Attributes Reference
 

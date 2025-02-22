@@ -22,6 +22,7 @@ var (
 	testAccRealm               *keycloak.Realm
 	testAccRealmTwo            *keycloak.Realm
 	testAccRealmUserFederation *keycloak.Realm
+	testAccRealmAllGroups      *keycloak.Realm
 	testCtx                    context.Context
 )
 
@@ -77,6 +78,7 @@ func TestMain(m *testing.M) {
 	testAccRealm = createTestRealm(testCtx)
 	testAccRealmTwo = createTestRealm(testCtx)
 	testAccRealmUserFederation = createTestRealm(testCtx)
+	testAccRealmAllGroups = createTestRealm(testCtx)
 
 	code := m.Run()
 
@@ -94,6 +96,11 @@ func TestMain(m *testing.M) {
 	err = keycloakClient.DeleteRealm(testCtx, testAccRealmUserFederation.Realm)
 	if err != nil {
 		log.Printf("Unable to delete realm %s: %s", testAccRealmUserFederation.Realm, err)
+	}
+
+	err = keycloakClient.DeleteRealm(testCtx, testAccRealmAllGroups.Realm)
+	if err != nil {
+		log.Printf("Unable to delete realm %s: %s", testAccRealmAllGroups.Realm, err)
 	}
 
 	os.Exit(code)

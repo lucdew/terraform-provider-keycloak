@@ -19,8 +19,6 @@ type Group struct {
 	Attributes    map[string][]string `json:"attributes"`
 }
 
-type Groups []Group
-
 /*
  * There is no way to get a subgroup's parent ID using the Keycloak API (that I know of, PRs are welcome)
  * The best we can do is check subGroup's path with the group's path to figure out what sub-path to follow
@@ -108,46 +106,36 @@ func (keycloakClient *KeycloakClient) GetGroups(ctx context.Context, realmId str
 	return groups, nil
 }
 
-func (keycloakClient *KeycloakClient) appendChildGroups(ctx context.Context, groupsAcc *[]Group, realmId string, groupId string, fullHierarchy bool) error {
-	var groups []*Group
-
-	err := keycloakClient.get(ctx, fmt.Sprintf("/realms/%s/groups/%s/children", realmId, groupId), &groups, nil)
-	if err != nil {
-		return err
-	}
-
-	for _, group := range groups {
-		*groupsAcc = append(*groupsAcc, *group)
-		group.RealmId = realmId
-
-		if fullHierarchy && group.SubGroupCount > 0 {
-			err := keycloakClient.appendChildGroups(ctx, groupsAcc, realmId, group.Id, fullHierarchy)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func (keycloakClient *KeycloakClient) GetFlattenedGroupsHierarchy(ctx context.Context, realmId string, fullHierarchy bool) (Groups, error) {
+// Get the realms groups hierarchy flatten but sorted by level
+func (keycloakClient *KeycloakClient) GetFlattenedGroupsHierarchy(ctx context.Context, realmId string, fullHierarchy bool) ([]*Group, error) {
 	groups, err := keycloakClient.GetGroups(ctx, realmId)
 	if err != nil {
 		return nil, err
 	}
-	groupsPtr := make([]Group, len(groups))
+	var allGroups []*Group
+	var groupsQueue []*Group
+	groupsQueue = append(groupsQueue, groups...)
 
-	for idx, group := range groups {
-		groupsPtr[idx] = *group
-		if group.SubGroupCount > 0 {
-			err := keycloakClient.appendChildGroups(ctx, &groupsPtr, realmId, group.Id, fullHierarchy)
-			if err != nil {
-				return nil, err
+	for len(groupsQueue) > 0 {
+		levelSize := len(groupsQueue)
+		for i := 0; i < levelSize; i++ {
+			group := groupsQueue[0]
+			groupsQueue = groupsQueue[1:]
+
+			allGroups = append(allGroups, group)
+
+			if fullHierarchy && group.SubGroupCount > 0 {
+				var children []*Group
+				err := keycloakClient.get(ctx, fmt.Sprintf("/realms/%s/groups/%s/children", realmId, group.Id), &children, nil)
+				if err != nil {
+					return nil, err
+				}
+				groupsQueue = append(groupsQueue, children...)
 			}
 		}
 	}
 
-	return groupsPtr, nil
+	return allGroups, nil
 }
 
 func (keycloakClient *KeycloakClient) GetGroup(ctx context.Context, realmId, id string) (*Group, error) {
@@ -251,7 +239,7 @@ func (keycloakClient *KeycloakClient) ListGroupsWithName(ctx context.Context, re
 
 func (keycloakClient *KeycloakClient) GetGroupMembers(ctx context.Context, realmId, groupId string) ([]*User, error) {
 	var users []*User
-	var first, pagination = 0, 50
+	first, pagination := 0, 50
 	var iterationUsers []*User
 
 	for ok := true; ok; ok = len(iterationUsers) > 0 {

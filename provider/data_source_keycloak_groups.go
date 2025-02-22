@@ -69,7 +69,7 @@ func dataSourceKeycloakGroups() *schema.Resource {
 	}
 }
 
-func flattenGroups(groups keycloak.Groups) []map[string]interface{} {
+func flattenGroups(groups []*keycloak.Group) []map[string]interface{} {
 	groupsMap := make([]map[string]interface{}, 0)
 
 	for _, group := range groups {
@@ -95,7 +95,7 @@ func flattenGroups(groups keycloak.Groups) []map[string]interface{} {
 	return groupsMap
 }
 
-func setGroupsData(data *schema.ResourceData, groups keycloak.Groups) error {
+func setGroupsData(data *schema.ResourceData, groups []*keycloak.Group) error {
 	data.SetId(data.Get("realm_id").(string))
 
 	err := data.Set("groups", flattenGroups(groups))
