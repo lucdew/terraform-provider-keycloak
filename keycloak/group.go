@@ -108,47 +108,62 @@ func (keycloakClient *KeycloakClient) GetGroups(ctx context.Context, realmId str
 	return groups, nil
 }
 
-func (keycloakClient *KeycloakClient) appendChildGroups(ctx context.Context, groupsAcc *[]Group, realmId string, groupId string, fullHierarchy bool) error {
-	var groups []*Group
+func (keycloakClient *KeycloakClient) appendChildGroups(ctx context.Context, groupsAcc *[]*Group, levelGroups []*Group, realmId string, fullHierarchy bool) error {
+	nextLevelGroups := make([]*Group, 0)
 
-	err := keycloakClient.get(ctx, fmt.Sprintf("/realms/%s/groups/%s/children", realmId, groupId), &groups, nil)
+	// SubGroupCount attribute only exist since KC 23
+	kcIsLowerThan23, err := keycloakClient.VersionIsLessThan(ctx, Version_23)
 	if err != nil {
 		return err
 	}
 
-	for _, group := range groups {
-		*groupsAcc = append(*groupsAcc, *group)
+	for _, group := range levelGroups {
 		group.RealmId = realmId
+		if fullHierarchy && (kcIsLowerThan23 || group.SubGroupCount > 0) {
 
-		if fullHierarchy && group.SubGroupCount > 0 {
-			err := keycloakClient.appendChildGroups(ctx, groupsAcc, realmId, group.Id, fullHierarchy)
+			var groups []*Group
+			err := keycloakClient.get(ctx, fmt.Sprintf("/realms/%s/groups/%s/children", realmId, group.Id), &groups, nil)
 			if err != nil {
 				return err
 			}
+			nextLevelGroups = append(nextLevelGroups, groups...)
+		}
+
+	}
+	*groupsAcc = append(*groupsAcc, nextLevelGroups...)
+	if len(nextLevelGroups) > 0 {
+		err := keycloakClient.appendChildGroups(ctx, groupsAcc, nextLevelGroups, realmId, fullHierarchy)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
+// Get the realms groups hierarchy flatten but sorted by level
 func (keycloakClient *KeycloakClient) GetFlattenedGroupsHierarchy(ctx context.Context, realmId string, fullHierarchy bool) (Groups, error) {
 	groups, err := keycloakClient.GetGroups(ctx, realmId)
 	if err != nil {
 		return nil, err
 	}
-	groupsPtr := make([]Group, len(groups))
+	groupsPtr := make([]*Group, len(groups))
+	levelGroupsPtr := make([]*Group, len(groups))
 
-	for idx, group := range groups {
-		groupsPtr[idx] = *group
-		fmt.Printf("Adding group=%v", *group)
-		if group.SubGroupCount > 0 {
-			err := keycloakClient.appendChildGroups(ctx, &groupsPtr, realmId, group.Id, fullHierarchy)
-			if err != nil {
-				return nil, err
-			}
-		}
+	for i := 0; i < len(groups); i++ {
+		groupsPtr[i] = groups[i]
+		levelGroupsPtr[i] = groups[i]
+	}
+	err = keycloakClient.appendChildGroups(ctx, &groupsPtr, levelGroupsPtr, realmId, fullHierarchy)
+	if err != nil {
+		return nil, err
 	}
 
-	return groupsPtr, nil
+	allGroups := make([]Group, len(groupsPtr))
+	for i := 0; i < len(groupsPtr); i++ {
+		allGroups[i] = *groupsPtr[i]
+	}
+
+	return allGroups, nil
 }
 
 func (keycloakClient *KeycloakClient) GetGroup(ctx context.Context, realmId, id string) (*Group, error) {

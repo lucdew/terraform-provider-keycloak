@@ -43,20 +43,6 @@ func testAccCheckDataKeycloakGroups(groupPrefix string, resourceName string) res
 			return fmt.Errorf("no id for groups")
 		}
 
-		rs_group, ok := s.RootModule().Resources["keycloak_group.group_0_a_1_a_2_a"]
-		if ok {
-			fmt.Printf("Found group_0_a_1_a_2_a in resources=%v", rs_group.Primary.Attributes)
-		} else {
-			fmt.Println("Not Found group_0_a_1_a_2_a in resources")
-		}
-
-		// debug failed tests in CI
-		rs_realm, ok := s.RootModule().Resources["data.keycloak_realm.realm"]
-		if !ok {
-			return fmt.Errorf("resource not found: %s", "data.keycloak_realm.realm")
-		}
-		fmt.Printf("realmid=%s, groups=%v", rs_realm.Primary.Attributes["id"], rs.Primary.Attributes)
-
 		if len(rs.Primary.Attributes["groups.#"]) == 0 {
 			return fmt.Errorf("no groups exist")
 		}
@@ -66,12 +52,12 @@ func testAccCheckDataKeycloakGroups(groupPrefix string, resourceName string) res
 			return fmt.Errorf("group %s_0_a is missing", groupPrefix)
 		}
 
-		name_group_0_a_1_a_2_b := rs.Primary.Attributes["groups.4.name"]
+		name_group_0_a_1_a_2_b := rs.Primary.Attributes["groups.5.name"]
 		if name_group_0_a_1_a_2_b != fmt.Sprintf("%s_0_a_1_a_2_b", groupPrefix) {
 			return fmt.Errorf("%s_0_a_1_a_2_b is missing", groupPrefix)
 		}
 
-		path_group_0_a_1_a_2_b := rs.Primary.Attributes["groups.4.path"]
+		path_group_0_a_1_a_2_b := rs.Primary.Attributes["groups.5.path"]
 		if path_group_0_a_1_a_2_b != fmt.Sprintf("/%s_0_a/%s_0_a_1_a/%s_0_a_1_a_2_b", groupPrefix, groupPrefix, groupPrefix) {
 			return fmt.Errorf("%s_0_a_1_a_2_b path is invalid got %s", groupPrefix, path_group_0_a_1_a_2_b)
 		}
@@ -102,6 +88,12 @@ resource "keycloak_group" "group_0_a_1_a" {
 	realm_id 	= data.keycloak_realm.realm.id
 }
 
+resource "keycloak_group" "group_0_a_1_b" {
+	name     	= "%s_0_a_1_b"
+	parent_id = keycloak_group.group_0_a.id
+	realm_id 	= data.keycloak_realm.realm.id
+}
+
 resource "keycloak_group" "group_0_a_1_a_2_a" {
 	name     	= "%s_0_a_1_a_2_a"
 	parent_id = keycloak_group.group_0_a_1_a.id
@@ -121,5 +113,5 @@ data "keycloak_groups" "all_groups" {
 	depends_on = [keycloak_group.group_0_b, keycloak_group.group_0_a_1_a_2_a, keycloak_group.group_0_a_1_a_2_b]
 }
 
-	`, testAccRealmAllGroups.Realm, group, group, group, group, group)
+	`, testAccRealmAllGroups.Realm, group, group, group, group, group, group)
 }
