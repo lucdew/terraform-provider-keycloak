@@ -11,7 +11,7 @@ import (
 )
 
 func TestAccKeycloakDataSourceGroups_full_hierarchy(t *testing.T) {
-	if ok, _ := keycloakClient.VersionIsLessThan(testCtx, keycloak.Version_23); !ok {
+	if ok, _ := keycloakClient.VersionIsLessThan(testCtx, keycloak.Version_23); ok {
 		t.Skip()
 	}
 	t.Parallel()
