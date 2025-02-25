@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/keycloak/terraform-provider-keycloak/keycloak"
+	"github.com/keycloak/terraform-provider-keycloak/keycloak/types"
 	"reflect"
 	"strings"
 )
@@ -18,8 +19,10 @@ var syncModes = []string{
 	"LEGACY",
 }
 
-type identityProviderDataGetterFunc func(data *schema.ResourceData, keycloakVersion *version.Version) (*keycloak.IdentityProvider, error)
-type identityProviderDataSetterFunc func(data *schema.ResourceData, identityProvider *keycloak.IdentityProvider, keycloakVersion *version.Version) error
+type (
+	identityProviderDataGetterFunc func(data *schema.ResourceData, keycloakVersion *version.Version) (*keycloak.IdentityProvider, error)
+	identityProviderDataSetterFunc func(data *schema.ResourceData, identityProvider *keycloak.IdentityProvider, keycloakVersion *version.Version) error
+)
 
 func resourceKeycloakIdentityProvider() *schema.Resource {
 	return &schema.Resource{
@@ -34,6 +37,7 @@ func resourceKeycloakIdentityProvider() *schema.Resource {
 				ForceNew:    true,
 				Description: "The alias uniquely identifies an identity provider and it is also used to build the redirect uri.",
 			},
+
 			"realm": {
 				Type:        schema.TypeString,
 				Required:    true,
@@ -119,6 +123,28 @@ func resourceKeycloakIdentityProvider() *schema.Resource {
 				ValidateFunc: validation.StringInSlice(syncModes, false),
 				Description:  "Sync Mode",
 			},
+			"organization": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"organization_id": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"domain": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "",
+						},
+						"redirect_email_domain_matches": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -145,6 +171,19 @@ func getIdentityProviderFromData(data *schema.ResourceData, keycloakVersion *ver
 		PostBrokerLoginFlowAlias:  data.Get("post_broker_login_flow_alias").(string),
 		InternalId:                data.Get("internal_id").(string),
 	}
+
+	if v, ok := data.GetOk("organization"); ok {
+		organizationSettings := v.([]interface{})[0].(map[string]interface{})
+		identityProvider.OrganizationId = organizationSettings["organization_id"].(string)
+
+		if v, ok := organizationSettings["domain"]; ok {
+			defaultIdentityProviderConfig.OrgDomain = v.(string)
+		}
+		if v, ok = organizationSettings["redirect_email_domain_matches"]; ok {
+			defaultIdentityProviderConfig.OrgRedirectEmailMatches = types.KeycloakBoolQuoted(reflect.ValueOf(v).Bool())
+		}
+	}
+
 	if keycloakVersion.GreaterThanOrEqual(keycloak.Version_26.AsVersion()) {
 		// Since keycloak v26 the attribute is moved from Config to Provider.
 		identityProvider.HideOnLogin = data.Get("hide_on_login_page").(bool)
@@ -171,6 +210,17 @@ func setIdentityProviderData(data *schema.ResourceData, identityProvider *keyclo
 
 	if keycloakVersion.GreaterThanOrEqual(keycloak.Version_26.AsVersion()) {
 		data.Set("hide_on_login_page", identityProvider.HideOnLogin)
+	}
+
+	if identityProvider.OrganizationId != "" {
+		organizationSettings := make(map[string]interface{})
+		organizationSettings["organization_id"] = identityProvider.OrganizationId
+		organizationSettings["redirect_email_domain_matches"] = identityProvider.Config.OrgRedirectEmailMatches
+		organizationSettings["domain"] = identityProvider.Config.OrgDomain
+
+		data.Set("organization", []interface{}{organizationSettings})
+	} else {
+		data.Set("organization", nil)
 	}
 
 	// identity provider config
