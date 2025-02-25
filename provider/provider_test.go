@@ -23,7 +23,6 @@ var (
 	testAccRealmTwo            *keycloak.Realm
 	testAccRealmUserFederation *keycloak.Realm
 	testAccRealmAllGroups      *keycloak.Realm
-	testAccRealmOrganizations  *keycloak.Realm
 	testCtx                    context.Context
 )
 
@@ -80,9 +79,6 @@ func TestMain(m *testing.M) {
 	testAccRealmTwo = createTestRealm(testCtx)
 	testAccRealmUserFederation = createTestRealm(testCtx)
 	testAccRealmAllGroups = createTestRealm(testCtx)
-	testAccRealmOrganizations = createTestRealm(testCtx, func(realm *keycloak.Realm) {
-		realm.OrganizationsEnabled = true
-	})
 
 	code := m.Run()
 
@@ -110,15 +106,15 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func createTestRealm(testCtx context.Context, realmOptions ...func(*keycloak.Realm)) *keycloak.Realm {
+func createTestRealm(testCtx context.Context) *keycloak.Realm {
 	name := acctest.RandomWithPrefix("tf-acc")
 	r := &keycloak.Realm{
 		Id:      name,
 		Realm:   name,
 		Enabled: true,
 	}
-	for _, o := range realmOptions {
-		o(r)
+	if ok, _ := keycloakClient.VersionIsGreaterThanOrEqualTo(testCtx, keycloak.Version_26); ok {
+		r.OrganizationsEnabled = true
 	}
 
 	var err error

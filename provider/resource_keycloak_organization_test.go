@@ -64,7 +64,7 @@ func TestAccKeycloakOrganization_basic(t *testing.T) {
 				Config: testKeycloakOrganization_basic_with_name(orgName, orgName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckKeycloakOrganizationExists("keycloak_organization.organization"),
-					resource.TestCheckResourceAttr("keycloak_organization.organization", "realm_id", testAccRealmOrganizations.Realm),
+					resource.TestCheckResourceAttr("keycloak_organization.organization", "realm_id", testAccRealm.Realm),
 					resource.TestCheckResourceAttr("keycloak_organization.organization", "name", orgName),
 				),
 			},
@@ -97,7 +97,7 @@ func TestAccKeycloakOrganization_withAllFields(t *testing.T) {
 				Config: testKeycloakOrganization_withAllFields(orgName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckKeycloakOrganizationExists("keycloak_organization.organization"),
-					resource.TestCheckResourceAttr("keycloak_organization.organization", "realm_id", testAccRealmOrganizations.Realm),
+					resource.TestCheckResourceAttr("keycloak_organization.organization", "realm_id", testAccRealm.Realm),
 					resource.TestCheckResourceAttr("keycloak_organization.organization", "name", orgName),
 					resource.TestCheckResourceAttr("keycloak_organization.organization", "redirect_url", "https://localhost:8080"),
 					resource.TestCheckResourceAttr("keycloak_organization.organization", "description", "Description for "+orgName),
@@ -156,7 +156,7 @@ resource "keycloak_organization" "organization" {
 		name = "examplebasic.com"
 	}
 }
-	`, testAccRealmOrganizations.Realm)
+	`, testAccRealm.Realm)
 }
 
 func testKeycloakOrganization_basic_with_name(orgName string, alias string) string {
@@ -173,7 +173,7 @@ resource "keycloak_organization" "organization" {
 		name = "examplebasicwithname.com"
 	}
 }
-	`, testAccRealmOrganizations.Realm, orgName, alias)
+	`, testAccRealm.Realm, orgName, alias)
 }
 
 func testKeycloakOrganization_withAllFields(name string) string {
@@ -201,7 +201,7 @@ resource "keycloak_organization" "organization" {
 		"testKey" = "testValue"
 	}
 }
-	`, testAccRealmOrganizations.Realm, name, name, name)
+	`, testAccRealm.Realm, name, name, name)
 }
 
 // Helper functions for tests
@@ -273,7 +273,7 @@ func getOrganizationImportId(resourceName string) resource.ImportStateIdFunc {
 // Sweeper function to clean up test organizations
 func sweepOrganizations() error {
 
-	organizations, err := keycloakClient.GetOrganizations(context.TODO(), testAccRealmOrganizations.Realm)
+	organizations, err := keycloakClient.GetOrganizations(context.TODO(), testAccRealm.Realm)
 	if err != nil {
 		return err
 	}
