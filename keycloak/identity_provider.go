@@ -52,6 +52,8 @@ type IdentityProviderConfig struct {
 	AuthnContextComparisonType      string                    `json:"authnContextComparisonType,omitempty"`
 	AuthnContextDeclRefs            types.KeycloakSliceQuoted `json:"authnContextDeclRefs,omitempty"`
 	Issuer                          string                    `json:"issuer,omitempty"`
+	OrgDomain                       string                    `json:"kc.org.domain,omitempty"`
+	OrgRedirectEmailMatches         types.KeycloakBoolQuoted  `json:"kc.org.broker.redirect.mode.email-matches,omitempty"`
 }
 
 type IdentityProvider struct {
@@ -65,11 +67,12 @@ type IdentityProvider struct {
 	AddReadTokenRoleOnCreate  bool                    `json:"addReadTokenRoleOnCreate"`
 	AuthenticateByDefault     bool                    `json:"authenticateByDefault"`
 	LinkOnly                  bool                    `json:"linkOnly"`
-	HideOnLogin               bool                    `json:"hideOnLogin,omitempty"` //since keycloak v26
+	HideOnLogin               bool                    `json:"hideOnLogin,omitempty"` // since keycloak v26
 	TrustEmail                bool                    `json:"trustEmail"`
 	FirstBrokerLoginFlowAlias string                  `json:"firstBrokerLoginFlowAlias"`
 	PostBrokerLoginFlowAlias  string                  `json:"postBrokerLoginFlowAlias"`
 	Config                    *IdentityProviderConfig `json:"config"`
+	OrganizationId            string                  `json:"organizationId,omitempty"` // since keycloak v26
 }
 
 func (keycloakClient *KeycloakClient) NewIdentityProvider(ctx context.Context, identityProvider *IdentityProvider) error {
