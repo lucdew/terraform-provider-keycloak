@@ -14,7 +14,9 @@ import (
 
 // Test sweeper to clean up test organizations
 func TestAccKeycloakOrganization_sweepers(t *testing.T) {
-
+	if ok, _ := keycloakClient.VersionIsLessThan(testCtx, keycloak.Version_26); ok {
+		t.Skip()
+	}
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: testAccProviderFactories,
 		PreCheck:          func() { testAccPreCheck(t) },
@@ -45,6 +47,9 @@ func TestAccKeycloakOrganization_sweepers(t *testing.T) {
 
 // Basic CRUD tests
 func TestAccKeycloakOrganization_basic(t *testing.T) {
+	if ok, _ := keycloakClient.VersionIsLessThan(testCtx, keycloak.Version_26); ok {
+		t.Skip()
+	}
 	t.Parallel()
 
 	orgName := acctest.RandomWithPrefix("tf-acc")
@@ -76,6 +81,9 @@ func TestAccKeycloakOrganization_basic(t *testing.T) {
 
 // Test with all fields
 func TestAccKeycloakOrganization_withAllFields(t *testing.T) {
+	if ok, _ := keycloakClient.VersionIsLessThan(testCtx, keycloak.Version_26); ok {
+		t.Skip()
+	}
 	t.Parallel()
 
 	orgName := acctest.RandomWithPrefix("tf-acc")
@@ -108,6 +116,9 @@ func TestAccKeycloakOrganization_withAllFields(t *testing.T) {
 
 // Import test
 func TestAccKeycloakOrganization_import(t *testing.T) {
+	if ok, _ := keycloakClient.VersionIsLessThan(testCtx, keycloak.Version_26); ok {
+		t.Skip()
+	}
 	orgName := acctest.RandomWithPrefix("terraform-org")
 
 	resource.Test(t, resource.TestCase{
