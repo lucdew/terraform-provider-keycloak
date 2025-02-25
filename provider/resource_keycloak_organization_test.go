@@ -102,6 +102,7 @@ func TestAccKeycloakOrganization_withAllFields(t *testing.T) {
 					resource.TestCheckResourceAttr("keycloak_organization.organization", "redirect_url", "https://localhost:8080"),
 					resource.TestCheckResourceAttr("keycloak_organization.organization", "description", "Description for "+orgName),
 					resource.TestCheckResourceAttr("keycloak_organization.organization", "alias", orgName),
+					resource.TestCheckResourceAttr("keycloak_organization.organization", "enabled", "true"),
 					resource.TestCheckResourceAttr("keycloak_organization.organization", "domain.#", "2"),
 					resource.TestCheckResourceAttr("keycloak_organization.organization", "domain.0.name", "example.com"),
 					resource.TestCheckResourceAttr("keycloak_organization.organization", "domain.0.verified", "true"),

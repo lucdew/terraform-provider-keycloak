@@ -39,6 +39,11 @@ func resourceKeycloakOrganization() *schema.Resource {
 				Computed:     true,
 				ValidateFunc: validation.StringIsNotEmpty,
 			},
+			"enabled": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
+			},
 			"redirect_url": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -78,18 +83,7 @@ func resourceKeycloakOrganization() *schema.Resource {
 func resourceKeycloakOrganizationCreate(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	keycloakClient := meta.(*keycloak.KeycloakClient)
 
-	realmId := data.Get("realm_id").(string)
-	name := data.Get("name").(string)
-
-	organization := &keycloak.Organization{
-		RealmId:     realmId,
-		Name:        name,
-		Alias:       data.Get("alias").(string),
-		RedirectUrl: data.Get("redirect_url").(string),
-		Description: data.Get("description").(string),
-		Domains:     expandOrganizationDomains(data.Get("domain").(*schema.Set)),
-		Attributes:  expandStringMap(data.Get("attributes").(map[string]interface{})),
-	}
+	organization := getOrganizationFromData(data)
 
 	err := keycloakClient.CreateOrganization(ctx, organization)
 	if err != nil {
@@ -157,25 +151,26 @@ func resourceKeycloakOrganizationImport(ctx context.Context, data *schema.Resour
 }
 
 func getOrganizationFromData(data *schema.ResourceData) *keycloak.Organization {
-	realmId := data.Get("realm_id").(string)
-	id := data.Id()
 
 	return &keycloak.Organization{
-		Id:          id,
-		RealmId:     realmId,
+		Id:          data.Id(),
+		RealmId:     data.Get("realm_id").(string),
 		Name:        data.Get("name").(string),
 		Alias:       data.Get("alias").(string),
+		Enabled:     data.Get("enabled").(bool),
 		RedirectUrl: data.Get("redirect_url").(string),
 		Description: data.Get("description").(string),
 		Domains:     expandOrganizationDomains(data.Get("domain").(*schema.Set)),
 		Attributes:  expandStringMap(data.Get("attributes").(map[string]interface{})),
 	}
+
 }
 
 func setOrganizationData(data *schema.ResourceData, organization *keycloak.Organization) {
 	data.Set("realm_id", organization.RealmId)
 	data.Set("name", organization.Name)
 	data.Set("alias", organization.Alias)
+	data.Set("enabled", organization.Enabled)
 	data.Set("redirect_url", organization.RedirectUrl)
 	data.Set("description", organization.Description)
 	data.Set("domain", flattenOrganizationDomains(organization.Domains))

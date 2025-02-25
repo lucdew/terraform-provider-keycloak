@@ -16,6 +16,7 @@ type Organization struct {
 	RealmId     string               `json:"-"`
 	Name        string               `json:"name"`
 	Alias       string               `json:"alias,omitempty"`
+	Enabled     bool                 `json:"enabled"`
 	RedirectUrl string               `json:"redirectUrl,omitempty"`
 	Description string               `json:"description,omitempty"`
 	Domains     []OrganizationDomain `json:"domains,omitempty"`
