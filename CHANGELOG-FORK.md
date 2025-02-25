@@ -1,3 +1,9 @@
+## 5.1.1-1.1.0 (February 25, 2025)
+
+FEATURES:
+
+- feat: Add partial organization support ([#9](https://github.com/lucdew/terraform-provider-keycloak/pull/8))
+
 ## 5.1.1-1.0.0 (February 20, 2025)
 
 FEATURES:
