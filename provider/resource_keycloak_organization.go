@@ -33,6 +33,12 @@ func resourceKeycloakOrganization() *schema.Resource {
 				Required:     true,
 				ValidateFunc: validation.StringIsNotEmpty,
 			},
+			"alias": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				Computed:     true,
+				ValidateFunc: validation.StringIsNotEmpty,
+			},
 			"redirect_url": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -58,7 +64,7 @@ func resourceKeycloakOrganization() *schema.Resource {
 					},
 				},
 				// Custom validation function to ensure domain names are unique
-				ValidateFunc: validateUniqueDomainNames,
+				//ValidateFunc: validateUniqueDomainNames,
 			},
 			"attributes": {
 				Type:     schema.TypeMap,
@@ -78,6 +84,7 @@ func resourceKeycloakOrganizationCreate(ctx context.Context, data *schema.Resour
 	organization := &keycloak.Organization{
 		RealmId:     realmId,
 		Name:        name,
+		Alias:       data.Get("alias").(string),
 		RedirectUrl: data.Get("redirect_url").(string),
 		Description: data.Get("description").(string),
 		Domains:     expandOrganizationDomains(data.Get("domain").(*schema.Set)),
@@ -89,7 +96,7 @@ func resourceKeycloakOrganizationCreate(ctx context.Context, data *schema.Resour
 		return diag.FromErr(err)
 	}
 
-	data.SetId(fmt.Sprintf("%s/%s", realmId, organization.Id))
+	data.SetId(organization.Id)
 
 	return resourceKeycloakOrganizationRead(ctx, data, meta)
 }
@@ -98,7 +105,7 @@ func resourceKeycloakOrganizationRead(ctx context.Context, data *schema.Resource
 	keycloakClient := meta.(*keycloak.KeycloakClient)
 
 	realmId := data.Get("realm_id").(string)
-	id := getOrganizationIdFromData(data)
+	id := data.Id()
 
 	organization, err := keycloakClient.GetOrganization(ctx, realmId, id)
 	if err != nil {
@@ -127,7 +134,7 @@ func resourceKeycloakOrganizationDelete(ctx context.Context, data *schema.Resour
 	keycloakClient := meta.(*keycloak.KeycloakClient)
 
 	realmId := data.Get("realm_id").(string)
-	id := getOrganizationIdFromData(data)
+	id := data.Id()
 
 	err := keycloakClient.DeleteOrganization(ctx, realmId, id)
 	if err != nil {
@@ -138,30 +145,26 @@ func resourceKeycloakOrganizationDelete(ctx context.Context, data *schema.Resour
 }
 
 func resourceKeycloakOrganizationImport(ctx context.Context, data *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	parts := importStringParse(data.Id())
+	parts := strings.Split(data.Id(), "/")
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("Invalid import. Supported format: {{realm}}/{{organizationId}}")
+		return nil, fmt.Errorf("invalid import. Supported format: {{realm}}/{{organizationId}}")
 	}
 
 	data.Set("realm_id", parts[0])
-	data.SetId(fmt.Sprintf("%s/%s", parts[0], parts[1]))
+	data.SetId(parts[1])
 
 	return []*schema.ResourceData{data}, nil
 }
 
-func getOrganizationIdFromData(data *schema.ResourceData) string {
-	parts := importStringParse(data.Id())
-	return parts[1]
-}
-
 func getOrganizationFromData(data *schema.ResourceData) *keycloak.Organization {
 	realmId := data.Get("realm_id").(string)
-	id := getOrganizationIdFromData(data)
+	id := data.Id()
 
 	return &keycloak.Organization{
 		Id:          id,
 		RealmId:     realmId,
 		Name:        data.Get("name").(string),
+		Alias:       data.Get("alias").(string),
 		RedirectUrl: data.Get("redirect_url").(string),
 		Description: data.Get("description").(string),
 		Domains:     expandOrganizationDomains(data.Get("domain").(*schema.Set)),
@@ -172,6 +175,7 @@ func getOrganizationFromData(data *schema.ResourceData) *keycloak.Organization {
 func setOrganizationData(data *schema.ResourceData, organization *keycloak.Organization) {
 	data.Set("realm_id", organization.RealmId)
 	data.Set("name", organization.Name)
+	data.Set("alias", organization.Alias)
 	data.Set("redirect_url", organization.RedirectUrl)
 	data.Set("description", organization.Description)
 	data.Set("domain", flattenOrganizationDomains(organization.Domains))
@@ -179,7 +183,8 @@ func setOrganizationData(data *schema.ResourceData, organization *keycloak.Organ
 }
 
 // validateUniqueDomainNames ensures that all domain names within the set are unique
-func validateUniqueDomainNames(v interface{}, k string) (warns []string, errors []error) {
+func validateUniqueDomainNames(v interface{}, k string) (warnings []string, errors []error) {
+
 	domains := v.(*schema.Set).List()
 
 	// Create a map to track domain names
@@ -201,7 +206,7 @@ func validateUniqueDomainNames(v interface{}, k string) (warns []string, errors 
 		}
 	}
 
-	return warns, errors
+	return warnings, errors
 }
 
 // Helper functions for domain handling

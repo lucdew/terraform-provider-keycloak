@@ -109,9 +109,10 @@ func TestMain(m *testing.M) {
 func createTestRealm(testCtx context.Context) *keycloak.Realm {
 	name := acctest.RandomWithPrefix("tf-acc")
 	r := &keycloak.Realm{
-		Id:      name,
-		Realm:   name,
-		Enabled: true,
+		Id:                   name,
+		Realm:                name,
+		Enabled:              true,
+		OrganizationsEnabled: true,
 	}
 
 	var err error
