@@ -23,12 +23,12 @@ resource "keycloak_organization" "engineering" {
   description  = "Organization for the engineering department"
 
   domain       {
-	name = "engineering.example.com"
-	verified = true
+    name = "engineering.example.com"
+    verified = true
   }
 
   domain       {
-	name = "engineering-lab.example.com"
+    name = "engineering-lab.example.com"
   }
 
   attributes   = {
@@ -36,8 +36,6 @@ resource "keycloak_organization" "engineering" {
     location   = "headquarter"
   }
 }
-
-
 
 ```
 

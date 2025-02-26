@@ -125,21 +125,24 @@ func resourceKeycloakIdentityProvider() *schema.Resource {
 			},
 			"organization": {
 				Type:     schema.TypeList,
+				Computed: true,
 				Optional: true,
 				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"organization_id": {
 							Type:     schema.TypeString,
-							Required: true,
+							Computed: true,
+							Optional: true,
 						},
 						"domain": {
 							Type:     schema.TypeString,
+							Computed: true,
 							Optional: true,
-							Default:  "",
 						},
 						"redirect_email_domain_matches": {
 							Type:     schema.TypeBool,
+							Computed: true,
 							Optional: true,
 						},
 					},

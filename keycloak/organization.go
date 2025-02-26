@@ -38,6 +38,28 @@ func (keycloakClient *KeycloakClient) CreateOrganization(ctx context.Context, or
 	return nil
 }
 
+func (keycloakClient *KeycloakClient) LinkIdentityProviderToOrganization(ctx context.Context, realmId string, orgId string, idpAlias string) error {
+	path := fmt.Sprintf("/realms/%s/organizations/%s/identity-providers", realmId, orgId)
+
+	_, err := keycloakClient.sendRaw(ctx, path, []byte(idpAlias))
+
+	return err
+}
+
+func (keycloakClient *KeycloakClient) UnlinkIdentityProviderToOrganization(ctx context.Context, realmId string, orgId string, idpAlias string) error {
+	path := fmt.Sprintf("/realms/%s/organizations/%s/identity-providers/%s", realmId, orgId, idpAlias)
+
+	err := keycloakClient.delete(ctx, path, nil)
+
+	return err
+}
+
+func (keycloakClient *KeycloakClient) CheckIdentityProviderLinkToOrganization(ctx context.Context, realmId string, orgId string, idpAlias string) error {
+	path := fmt.Sprintf("/realms/%s/organizations/%s/identity-providers/%s", realmId, orgId, idpAlias)
+	_, err := keycloakClient.getRaw(ctx, path, nil)
+	return err
+}
+
 // GetOrganizationsPath returns the URL for the organization API endpoint
 func (keycloakClient *KeycloakClient) GetOrganizationsPath(realmId string) string {
 	return fmt.Sprintf("/realms/%s/organizations", realmId)
