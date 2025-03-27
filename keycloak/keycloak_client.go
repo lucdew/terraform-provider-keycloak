@@ -36,6 +36,7 @@ type KeycloakClient struct {
 	additionalHeaders map[string]string
 	debug             bool
 	redHatSSO         bool
+	tlsClientAuth     bool
 }
 
 type ClientCredentials struct {
@@ -61,7 +62,7 @@ var redHatSSO7VersionMap = map[int]string{
 	4: "9.0.17",
 }
 
-func NewKeycloakClient(ctx context.Context, url, basePath, clientId, clientSecret, realm, username, password string, initialLogin bool, clientTimeout int, caCert string, tlsClientCert string, tlsClientPrivateKey string, tlsInsecureSkipVerify bool, userAgent string, redHatSSO bool, additionalHeaders map[string]string) (*KeycloakClient, error) {
+func NewKeycloakClient(ctx context.Context, url, basePath, clientId, clientSecret, realm, username, password string, initialLogin bool, clientTimeout int, caCert string, tlsClientCert string, tlsClientAuth bool, tlsClientPrivateKey string, tlsInsecureSkipVerify bool, userAgent string, redHatSSO bool, additionalHeaders map[string]string) (*KeycloakClient, error) {
 	clientCredentials := &ClientCredentials{
 		ClientId:     clientId,
 		ClientSecret: clientSecret,
@@ -71,6 +72,8 @@ func NewKeycloakClient(ctx context.Context, url, basePath, clientId, clientSecre
 		clientCredentials.Password = password
 		clientCredentials.GrantType = "password"
 	} else if clientSecret != "" {
+		clientCredentials.GrantType = "client_credentials"
+	} else if tlsClientAuth {
 		clientCredentials.GrantType = "client_credentials"
 	} else {
 		if initialLogin {
@@ -94,6 +97,7 @@ func NewKeycloakClient(ctx context.Context, url, basePath, clientId, clientSecre
 		userAgent:         userAgent,
 		redHatSSO:         redHatSSO,
 		additionalHeaders: additionalHeaders,
+		tlsClientAuth:     tlsClientAuth,
 	}
 
 	if keycloakClient.initialLogin {
@@ -271,8 +275,12 @@ func (keycloakClient *KeycloakClient) getAuthenticationFormData() url.Values {
 			authenticationFormData.Set("client_secret", keycloakClient.clientCredentials.ClientSecret)
 		}
 
-	} else if keycloakClient.clientCredentials.GrantType == "client_credentials" {
+	} else if keycloakClient.clientCredentials.GrantType == "client_credentials" && keycloakClient.clientCredentials.ClientSecret != "" {
 		authenticationFormData.Set("client_secret", keycloakClient.clientCredentials.ClientSecret)
+	}
+
+	if keycloakClient.tlsClientAuth {
+		authenticationFormData.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:tls_client_auth")
 	}
 
 	return authenticationFormData

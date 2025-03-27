@@ -180,6 +180,12 @@ func KeycloakProvider(client *keycloak.KeycloakClient) *schema.Provider {
 				Description: "Allows ignoring insecure certificates when set to true. Defaults to false. Disabling security check is dangerous and should be avoided.",
 				Default:     false,
 			},
+			"tls_client_auth": {
+				Optional:    true,
+				Type:        schema.TypeString,
+				Description: "When true, uses also the TLS client certificate for authentication in Keycloak",
+				Default:     "",
+			},
 			"tls_client_certificate": {
 				Optional:    true,
 				Type:        schema.TypeString,
@@ -229,6 +235,7 @@ func KeycloakProvider(client *keycloak.KeycloakClient) *schema.Provider {
 		clientTimeout := data.Get("client_timeout").(int)
 		tlsInsecureSkipVerify := data.Get("tls_insecure_skip_verify").(bool)
 		tlsClientCertificate := data.Get("tls_client_certificate").(string)
+		tlsClientAuth := data.Get("tls_client_auth").(bool)
 		tlsClientPrivateKey := data.Get("tls_client_private_key").(string)
 		rootCaCertificate := data.Get("root_ca_certificate").(string)
 		redHatSSO := data.Get("red_hat_sso").(bool)
@@ -241,7 +248,7 @@ func KeycloakProvider(client *keycloak.KeycloakClient) *schema.Provider {
 
 		userAgent := fmt.Sprintf("HashiCorp Terraform/%s (+https://www.terraform.io) Terraform Plugin SDK/%s", provider.TerraformVersion, meta.SDKVersionString())
 
-		keycloakClient, err := keycloak.NewKeycloakClient(ctx, url, basePath, clientId, clientSecret, realm, username, password, initialLogin, clientTimeout, rootCaCertificate, tlsClientCertificate, tlsClientPrivateKey, tlsInsecureSkipVerify, userAgent, redHatSSO, additionalHeaders)
+		keycloakClient, err := keycloak.NewKeycloakClient(ctx, url, basePath, clientId, clientSecret, realm, username, password, initialLogin, clientTimeout, rootCaCertificate, tlsClientCertificate, tlsClientAuth, tlsClientPrivateKey, tlsInsecureSkipVerify, userAgent, redHatSSO, additionalHeaders)
 		if err != nil {
 			diags = append(diags, diag.Diagnostic{
 				Severity: diag.Error,
