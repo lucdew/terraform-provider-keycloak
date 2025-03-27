@@ -1,3 +1,9 @@
+## 5.1.1-1.3.0 (March 27, 2025)
+
+FEATURES:
+
+- feat: Add tls_client_auth in the provider for authenticating with a client certificate and private key ([#10](https://github.com/lucdew/terraform-provider-keycloak/pull/10))
+
 ## 5.1.1-1.2.0 (February 26, 2025)
 
 FEATURES:
