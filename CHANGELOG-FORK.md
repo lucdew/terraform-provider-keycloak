@@ -1,3 +1,8 @@
+## 5.1.1-1.4.0 (March 27, 2025)
+
+- Remove useless feature ([#10](https://github.com/lucdew/terraform-provider-keycloak/pull/10)). Client certificate authentication works by setting a
+  dummy client_secret. Setting the client_assertion_type is not needed.
+
 ## 5.1.1-1.3.0 (March 27, 2025)
 
 FEATURES:
