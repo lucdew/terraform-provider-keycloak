@@ -3,8 +3,9 @@ package keycloak
 import (
 	"context"
 	"fmt"
-	"github.com/keycloak/terraform-provider-keycloak/keycloak/types"
 	"reflect"
+
+	"github.com/keycloak/terraform-provider-keycloak/keycloak/types"
 )
 
 type OpenidClientRole struct {
@@ -56,11 +57,13 @@ type OpenidClient struct {
 	AuthorizationSettings              *OpenidClientAuthorizationSettings       `json:"authorizationSettings,omitempty"`
 	ConsentRequired                    bool                                     `json:"consentRequired"`
 	AuthenticationFlowBindingOverrides OpenidAuthenticationFlowBindingOverrides `json:"authenticationFlowBindingOverrides,omitempty"`
+	AlwaysDisplayInConsole             bool                                     `json:"alwaysDisplayInConsole"`
 }
 
 type OpenidClientAttributes struct {
 	PkceCodeChallengeMethod               string                           `json:"pkce.code.challenge.method"`
 	ExcludeSessionStateFromAuthResponse   types.KeycloakBoolQuoted         `json:"exclude.session.state.from.auth.response"`
+	ExcludeIssuerFromAuthResponse         types.KeycloakBoolQuoted         `json:"exclude.issuer.from.auth.response"`
 	AccessTokenLifespan                   string                           `json:"access.token.lifespan"`
 	LoginTheme                            string                           `json:"login_theme"`
 	ClientOfflineSessionIdleTimeout       string                           `json:"client.offline.session.idle.timeout,omitempty"`
