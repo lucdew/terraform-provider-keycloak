@@ -1,3 +1,7 @@
+## 5.2.0-1.4.0 (April 21, 2025)
+
+- Merge the official keycloak provider v5.2.0 ([#11](https://github.com/lucdew/terraform-provider-keycloak/pull/11))
+
 ## 5.1.1-1.4.0 (March 27, 2025)
 
 - Remove useless feature ([#10](https://github.com/lucdew/terraform-provider-keycloak/pull/10)). Client certificate authentication works by setting a
