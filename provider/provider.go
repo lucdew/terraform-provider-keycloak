@@ -129,8 +129,6 @@ func KeycloakProvider(client *keycloak.KeycloakClient) *schema.Provider {
 			"keycloak_user_groups":                                       resourceKeycloakUserGroups(),
 			"keycloak_group_permissions":                                 resourceKeycloakGroupPermissions(),
 			"keycloak_authentication_bindings":                           resourceKeycloakAuthenticationBindings(),
-			"keycloak_organization":                                      resourceKeycloakOrganization(),
-			"keycloak_organization_identity_provider":                    resourceKeycloakOrganizationIdentityProvider(),
 		},
 		Schema: map[string]*schema.Schema{
 			"client_id": {

@@ -22,6 +22,7 @@ var testAccRealm *keycloak.Realm
 var testAccRealmTwo *keycloak.Realm
 var testAccRealmUserFederation *keycloak.Realm
 var testAccRealmOrganization *keycloak.Realm
+var testAccRealmAllGroups *keycloak.Realm
 var testCtx context.Context
 
 var requiredEnvironmentVariables = []string{

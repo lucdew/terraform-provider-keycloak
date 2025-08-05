@@ -168,18 +168,6 @@ func getIdentityProviderFromData(data *schema.ResourceData, keycloakVersion *ver
 		InternalId:                data.Get("internal_id").(string),
 	}
 
-	if v, ok := data.GetOk("organization"); ok {
-		organizationSettings := v.([]interface{})[0].(map[string]interface{})
-		identityProvider.OrganizationId = organizationSettings["organization_id"].(string)
-
-		if v, ok := organizationSettings["domain"]; ok {
-			defaultIdentityProviderConfig.OrgDomain = v.(string)
-		}
-		if v, ok = organizationSettings["redirect_email_domain_matches"]; ok {
-			defaultIdentityProviderConfig.OrgRedirectEmailMatches = types.KeycloakBoolQuoted(reflect.ValueOf(v).Bool())
-		}
-	}
-
 	if keycloakVersion.GreaterThanOrEqual(keycloak.Version_26.AsVersion()) {
 		// Since keycloak v26 the attribute is moved from Config to Provider.
 		identityProvider.HideOnLogin = data.Get("hide_on_login_page").(bool)
@@ -207,17 +195,6 @@ func setIdentityProviderData(data *schema.ResourceData, identityProvider *keyclo
 
 	if keycloakVersion.GreaterThanOrEqual(keycloak.Version_26.AsVersion()) {
 		data.Set("hide_on_login_page", identityProvider.HideOnLogin)
-	}
-
-	if identityProvider.OrganizationId != "" {
-		organizationSettings := make(map[string]interface{})
-		organizationSettings["organization_id"] = identityProvider.OrganizationId
-		organizationSettings["redirect_email_domain_matches"] = identityProvider.Config.OrgRedirectEmailMatches
-		organizationSettings["domain"] = identityProvider.Config.OrgDomain
-
-		data.Set("organization", []interface{}{organizationSettings})
-	} else {
-		data.Set("organization", nil)
 	}
 
 	// identity provider config
