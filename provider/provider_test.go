@@ -15,16 +15,14 @@ import (
 	"github.com/keycloak/terraform-provider-keycloak/keycloak"
 )
 
-var (
-	testAccProviderFactories   map[string]func() (*schema.Provider, error)
-	testAccProvider            *schema.Provider
-	keycloakClient             *keycloak.KeycloakClient
-	testAccRealm               *keycloak.Realm
-	testAccRealmTwo            *keycloak.Realm
-	testAccRealmUserFederation *keycloak.Realm
-	testAccRealmAllGroups      *keycloak.Realm
-	testCtx                    context.Context
-)
+var testAccProviderFactories map[string]func() (*schema.Provider, error)
+var testAccProvider *schema.Provider
+var keycloakClient *keycloak.KeycloakClient
+var testAccRealm *keycloak.Realm
+var testAccRealmTwo *keycloak.Realm
+var testAccRealmUserFederation *keycloak.Realm
+var testAccRealmOrganization *keycloak.Realm
+var testCtx context.Context
 
 var requiredEnvironmentVariables = []string{
 	"KEYCLOAK_CLIENT_ID",
@@ -60,7 +58,7 @@ func init() {
 		}
 	}
 
-	keycloakClient, err = keycloak.NewKeycloakClient(testCtx, os.Getenv("KEYCLOAK_URL"), "", os.Getenv("KEYCLOAK_CLIENT_ID"), os.Getenv("KEYCLOAK_CLIENT_SECRET"), os.Getenv("KEYCLOAK_REALM"), "", "", true, 5, "", "", "", false, userAgent, false, map[string]string{
+	keycloakClient, err = keycloak.NewKeycloakClient(testCtx, os.Getenv("KEYCLOAK_URL"), "", os.Getenv("KEYCLOAK_CLIENT_ID"), os.Getenv("KEYCLOAK_CLIENT_SECRET"), os.Getenv("KEYCLOAK_REALM"), "", "", "", "", true, 5, "", "", "", false, userAgent, false, map[string]string{
 		"foo": "bar",
 	})
 	if err != nil {
@@ -118,6 +116,15 @@ func createTestRealm(testCtx context.Context) *keycloak.Realm {
 	}
 
 	var err error
+
+	validVersion, err := keycloakClient.VersionIsGreaterThanOrEqualTo(testCtx, keycloak.Version_26)
+	if err != nil {
+		log.Printf("Unable to check keycloak version: %s", err)
+	}
+	if validVersion {
+		r.OrganizationsEnabled = true
+	}
+
 	for i := 0; i < 3; i++ { // on CI this sometimes fails and keycloak can't be reached
 		err = keycloakClient.NewRealm(testCtx, r)
 		if err != nil {

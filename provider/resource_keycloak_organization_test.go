@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -12,281 +11,328 @@ import (
 	"github.com/keycloak/terraform-provider-keycloak/keycloak"
 )
 
-// Test sweeper to clean up test organizations
-func TestAccKeycloakOrganization_sweepers(t *testing.T) {
-	if ok, _ := keycloakClient.VersionIsLessThan(testCtx, keycloak.Version_26); ok {
-		t.Skip()
-	}
+func TestAccKeycloakOrganization_basic(t *testing.T) {
+	skipIfVersionIsLessThan(testCtx, t, keycloakClient, keycloak.Version_26)
+	organizationName := acctest.RandomWithPrefix("tf-acc")
+
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: testAccProviderFactories,
 		PreCheck:          func() { testAccPreCheck(t) },
+		CheckDestroy:      testAccCheckKeycloakOrganizationDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testKeycloakOrganization_basic(),
+				Config: testKeycloakOrganization_basic(organizationName),
 				Check:  testAccCheckKeycloakOrganizationExists("keycloak_organization.organization"),
+			},
+		},
+	})
+}
+
+func TestAccKeycloakOrganization_basicUpdate(t *testing.T) {
+	skipIfVersionIsLessThan(testCtx, t, keycloakClient, keycloak.Version_26)
+	organizationName := acctest.RandomWithPrefix("tf-acc")
+	firstEnabled := randomBool()
+	domainOne := acctest.RandomWithPrefix("tf-acc")
+	domainTwo := acctest.RandomWithPrefix("tf-acc")
+
+	firstOrg := &keycloak.Organization{
+		Realm:       testAccRealm.Realm,
+		Name:        organizationName,
+		Alias:       organizationName,
+		Enabled:     firstEnabled,
+		Description: acctest.RandomWithPrefix("tf-acc"),
+		RedirectUrl: "https://example.com",
+		Domains: []keycloak.OrganizationDomain{
+			{
+				Name:     domainOne,
+				Verified: firstEnabled,
+			},
+		},
+	}
+
+	secondOrg := &keycloak.Organization{
+		Realm:       testAccRealm.Realm,
+		Name:        organizationName,
+		Alias:       organizationName,
+		Enabled:     !firstEnabled,
+		Description: acctest.RandomWithPrefix("tf-acc"),
+		RedirectUrl: "https://example.org",
+		Domains: []keycloak.OrganizationDomain{
+			{
+				Name:     domainTwo,
+				Verified: !firstEnabled,
+			},
+		},
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: testAccProviderFactories,
+		PreCheck:          func() { testAccPreCheck(t) },
+		CheckDestroy:      testAccCheckKeycloakOrganizationDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testKeycloakOrganization_all(firstOrg),
+				Check:  testAccCheckKeycloakOrganizationExists("keycloak_organization.organization"),
+			},
+			{
+				Config: testKeycloakOrganization_all(secondOrg),
+				Check:  testAccCheckKeycloakOrganizationExists("keycloak_organization.organization"),
+			},
+			{
+				Config: testKeycloakOrganization_basic(organizationName),
+				Check:  testAccCheckKeycloakOrganizationExists("keycloak_organization.organization"),
+			},
+		},
+	})
+}
+
+func TestAccKeycloakOrganization_createAfterManualDestroy(t *testing.T) {
+	skipIfVersionIsLessThan(testCtx, t, keycloakClient, keycloak.Version_26)
+	var organization = &keycloak.Organization{}
+
+	organizationName := acctest.RandomWithPrefix("tf-acc")
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: testAccProviderFactories,
+		PreCheck:          func() { testAccPreCheck(t) },
+		CheckDestroy:      testAccCheckKeycloakOrganizationDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testKeycloakOrganization_basic(organizationName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckKeycloakOrganizationExists("keycloak_organization.organization"),
+					testAccCheckKeycloakOrganizationFetch("keycloak_organization.organization", organization),
+				),
 			},
 			{
 				PreConfig: func() {
-					err := sweepOrganizations()
+					err := keycloakClient.DeleteOrganization(testCtx, organization.Realm, organization.Id)
 					if err != nil {
-						t.Error(err)
+						t.Fatal(err)
 					}
 				},
-				Config: testKeycloakOrganization_basic(),
-				Check: func(state *terraform.State) error {
-					_, err := testAccCheckKeycloakOrganizationFetch("keycloak_organization.organization", state)
-					if err != nil {
-						return fmt.Errorf("organization was not created")
-					}
-					return nil
-				},
-			},
-		},
-	})
-}
-
-// Basic CRUD tests
-func TestAccKeycloakOrganization_basic(t *testing.T) {
-	if ok, _ := keycloakClient.VersionIsLessThan(testCtx, keycloak.Version_26); ok {
-		t.Skip()
-	}
-	t.Parallel()
-
-	orgName := acctest.RandomWithPrefix("tf-acc")
-	orgUpdatedName := acctest.RandomWithPrefix("tf-acc")
-
-	resource.Test(t, resource.TestCase{
-		ProviderFactories: testAccProviderFactories,
-		PreCheck:          func() { testAccPreCheck(t) },
-		CheckDestroy:      testAccCheckKeycloakOrganizationDestroy(),
-		Steps: []resource.TestStep{
-			{
-				Config: testKeycloakOrganization_basic_with_name(orgName, orgName),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckKeycloakOrganizationExists("keycloak_organization.organization"),
-					resource.TestCheckResourceAttr("keycloak_organization.organization", "realm_id", testAccRealm.Realm),
-					resource.TestCheckResourceAttr("keycloak_organization.organization", "name", orgName),
-				),
-			},
-			{
-				Config: testKeycloakOrganization_basic_with_name(orgUpdatedName, orgName),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckKeycloakOrganizationExists("keycloak_organization.organization"),
-					resource.TestCheckResourceAttr("keycloak_organization.organization", "name", orgUpdatedName),
-				),
-			},
-		},
-	})
-}
-
-// Test with all fields
-func TestAccKeycloakOrganization_withAllFields(t *testing.T) {
-	if ok, _ := keycloakClient.VersionIsLessThan(testCtx, keycloak.Version_26); ok {
-		t.Skip()
-	}
-	t.Parallel()
-
-	orgName := acctest.RandomWithPrefix("tf-acc")
-
-	resource.Test(t, resource.TestCase{
-		PreCheck:          func() { testAccPreCheck(t) },
-		ProviderFactories: testAccProviderFactories,
-		CheckDestroy:      testAccCheckKeycloakOrganizationDestroy(),
-		Steps: []resource.TestStep{
-			{
-				Config: testKeycloakOrganization_withAllFields(orgName),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckKeycloakOrganizationExists("keycloak_organization.organization"),
-					resource.TestCheckResourceAttr("keycloak_organization.organization", "realm_id", testAccRealm.Realm),
-					resource.TestCheckResourceAttr("keycloak_organization.organization", "name", orgName),
-					resource.TestCheckResourceAttr("keycloak_organization.organization", "redirect_url", "https://localhost:8080"),
-					resource.TestCheckResourceAttr("keycloak_organization.organization", "description", "Description for "+orgName),
-					resource.TestCheckResourceAttr("keycloak_organization.organization", "alias", orgName),
-					resource.TestCheckResourceAttr("keycloak_organization.organization", "enabled", "true"),
-					resource.TestCheckResourceAttr("keycloak_organization.organization", "domain.#", "2"),
-					resource.TestCheckResourceAttr("keycloak_organization.organization", "domain.0.name", "example.com"),
-					resource.TestCheckResourceAttr("keycloak_organization.organization", "domain.0.verified", "true"),
-					resource.TestCheckResourceAttr("keycloak_organization.organization", "domain.1.name", "example.org"),
-					resource.TestCheckResourceAttr("keycloak_organization.organization", "domain.1.verified", "false"),
-					resource.TestCheckResourceAttr("keycloak_organization.organization", "attributes.testKey", "testValue"),
-				),
-			},
-		},
-	})
-}
-
-// Import test
-func TestAccKeycloakOrganization_import(t *testing.T) {
-	if ok, _ := keycloakClient.VersionIsLessThan(testCtx, keycloak.Version_26); ok {
-		t.Skip()
-	}
-	orgName := acctest.RandomWithPrefix("terraform-org")
-
-	resource.Test(t, resource.TestCase{
-		PreCheck:          func() { testAccPreCheck(t) },
-		ProviderFactories: testAccProviderFactories,
-		CheckDestroy:      testAccCheckKeycloakOrganizationDestroy(),
-		Steps: []resource.TestStep{
-			{
-				Config: testKeycloakOrganization_basic_with_name(orgName, orgName),
+				Config: testKeycloakOrganization_basic(organizationName),
 				Check:  testAccCheckKeycloakOrganizationExists("keycloak_organization.organization"),
 			},
+		},
+	})
+}
+
+func TestAccKeycloakOrganization_basicWithMultipleDomains(t *testing.T) {
+	skipIfVersionIsLessThan(testCtx, t, keycloakClient, keycloak.Version_26)
+	organizationName := acctest.RandomWithPrefix("tf-acc")
+	extraDomain := acctest.RandomWithPrefix("tf-acc")
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: testAccProviderFactories,
+		PreCheck:          func() { testAccPreCheck(t) },
+		CheckDestroy:      testAccCheckKeycloakOrganizationDestroy(),
+		Steps: []resource.TestStep{
 			{
-				ResourceName:      "keycloak_organization.organization",
-				ImportState:       true,
-				ImportStateVerify: true,
-				ImportStateIdFunc: getOrganizationImportId("keycloak_organization.organization"),
+				Config: testKeycloakOrganization_multipleDomains(organizationName, extraDomain),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckKeycloakOrganizationExists("keycloak_organization.organization"),
+					testAccCheckKeycloakOrganizationHasDomains("keycloak_organization.organization", extraDomain),
+				),
 			},
 		},
 	})
 }
 
-// Test Terraform configurations
-func testKeycloakOrganization_basic() string {
-	return fmt.Sprintf(`
+func TestAccKeycloakOrganization_basicWithAttributes(t *testing.T) {
+	skipIfVersionIsLessThan(testCtx, t, keycloakClient, keycloak.Version_26)
+	organizationName := acctest.RandomWithPrefix("tf-acc")
+	attributeName := acctest.RandomWithPrefix("tf-acc")
+	attributeValue := acctest.RandomWithPrefix("tf-acc")
 
-data "keycloak_realm" "realm" {
-	realm = "%s"
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: testAccProviderFactories,
+		PreCheck:          func() { testAccPreCheck(t) },
+		CheckDestroy:      testAccCheckKeycloakOrganizationDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testKeycloakOrganization_attributes(organizationName, attributeName, attributeValue),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckKeycloakOrganizationExists("keycloak_organization.organization"),
+					testAccCheckKeycloakOrganizationHasAttribute("keycloak_organization.organization", attributeName, attributeValue),
+				),
+			},
+		},
+	})
 }
 
-resource "keycloak_organization" "organization" {
-	realm_id = data.keycloak_realm.realm.id
-	name     = "terraform-organization"
-
-	domain {
-		name = "examplebasic.com"
-	}
-}
-	`, testAccRealm.Realm)
-}
-
-func testKeycloakOrganization_basic_with_name(orgName string, alias string) string {
-	return fmt.Sprintf(`
-data "keycloak_realm" "realm" {
-	realm = "%s"
-}
-resource "keycloak_organization" "organization" {
-	realm_id = data.keycloak_realm.realm.id
-	name     = "%s"
-	alias    = "%s"
-
-	domain {
-		name = "examplebasicwithname.com"
-	}
-}
-	`, testAccRealm.Realm, orgName, alias)
-}
-
-func testKeycloakOrganization_withAllFields(name string) string {
-	return fmt.Sprintf(`
-data "keycloak_realm" "realm" {
-	realm = "%s"
-}
-resource "keycloak_organization" "organization" {
-	realm_id = data.keycloak_realm.realm.id
-	name         = "%s"
-	alias        = "%s"
-	redirect_url = "https://localhost:8080"
-	description  = "Description for %s"
-
-	domain {
-		name = "example.com"
-		verified = true
-	}
-
-	domain {
-		name = "example.org"
-	}
-
-	attributes   = {
-		"testKey" = "testValue"
-	}
-}
-	`, testAccRealm.Realm, name, name, name)
-}
-
-// Helper functions for tests
 func testAccCheckKeycloakOrganizationExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		_, err := testAccCheckKeycloakOrganizationFetch(resourceName, s)
+		_, err := getOrganizationFromState(s, resourceName)
 		if err != nil {
 			return err
 		}
+
 		return nil
 	}
 }
 
-func testAccCheckKeycloakOrganizationFetch(resourceName string, s *terraform.State) (*keycloak.Organization, error) {
+func testAccCheckKeycloakOrganizationDestroy() resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		for name, rs := range s.RootModule().Resources {
+			if rs.Type != "keycloak_organization" || strings.HasPrefix(name, "data") {
+				continue
+			}
+
+			id := rs.Primary.ID
+			realm := rs.Primary.Attributes["realm"]
+
+			organization, _ := keycloakClient.GetOrganization(testCtx, realm, id)
+			if organization != nil {
+				return fmt.Errorf("%s with id %s still exists", name, id)
+			}
+		}
+
+		return nil
+	}
+}
+
+func testAccCheckKeycloakOrganizationFetch(resourceName string, organization *keycloak.Organization) resource.TestCheckFunc {
+	return func(state *terraform.State) error {
+		fetchedOrganization, err := getOrganizationFromState(state, resourceName)
+		if err != nil {
+			return err
+		}
+
+		organization.Id = fetchedOrganization.Id
+		organization.Name = fetchedOrganization.Name
+		organization.Realm = fetchedOrganization.Realm
+
+		return nil
+	}
+}
+
+func testAccCheckKeycloakOrganizationHasDomains(resourceName, domainName string) resource.TestCheckFunc {
+	return func(state *terraform.State) error {
+		organization, err := getOrganizationFromState(state, resourceName)
+		if err != nil {
+			return err
+		}
+
+		if len(organization.Domains) != 2 || (organization.Domains[0].Name != domainName && organization.Domains[1].Name != domainName) {
+			return fmt.Errorf("expected organization %s to have domain with domainName %s", organization.Name, domainName)
+		}
+
+		return nil
+	}
+}
+
+func testAccCheckKeycloakOrganizationHasAttribute(resourceName, attributeName, attributeValue string) resource.TestCheckFunc {
+	return func(state *terraform.State) error {
+		organization, err := getOrganizationFromState(state, resourceName)
+		if err != nil {
+			return err
+		}
+
+		if len(organization.Attributes) != 1 || organization.Attributes[attributeName][0] != attributeValue {
+			return fmt.Errorf("expected organization %s to have attribute %s with value %s", organization.Name, attributeName, attributeValue)
+		}
+
+		return nil
+	}
+}
+
+func getOrganizationFromState(s *terraform.State, resourceName string) (*keycloak.Organization, error) {
 	rs, ok := s.RootModule().Resources[resourceName]
 	if !ok {
 		return nil, fmt.Errorf("resource not found: %s", resourceName)
 	}
 
 	id := rs.Primary.ID
-	realmId := rs.Primary.Attributes["realm_id"]
+	realm := rs.Primary.Attributes["realm"]
 
-	keycloakClient := testAccProvider.Meta().(*keycloak.KeycloakClient)
-
-	organization, err := keycloakClient.GetOrganization(context.TODO(), realmId, id)
+	organization, err := keycloakClient.GetOrganization(testCtx, realm, id)
 	if err != nil {
-		return nil, fmt.Errorf("error getting organization: %s", err)
+		return nil, fmt.Errorf("error getting organization with id %s: %s", id, err)
 	}
 
 	return organization, nil
 }
 
-func testAccCheckKeycloakOrganizationDestroy() resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		for _, rs := range s.RootModule().Resources {
-			if rs.Type != "keycloak_organization" {
-				continue
-			}
-
-			id := rs.Primary.ID
-			realmId := rs.Primary.Attributes["realm_id"]
-
-			keycloakClient := testAccProvider.Meta().(*keycloak.KeycloakClient)
-
-			organization, _ := keycloakClient.GetOrganization(context.TODO(), realmId, id)
-			if organization != nil {
-				return fmt.Errorf("organization still exists")
-			}
-		}
-
-		return nil
-	}
+func testKeycloakOrganization_basic(organization string) string {
+	return fmt.Sprintf(`
+data "keycloak_realm" "realm" {
+	realm = "%s"
 }
 
-func getOrganizationImportId(resourceName string) resource.ImportStateIdFunc {
-	return func(s *terraform.State) (string, error) {
-		rs, ok := s.RootModule().Resources[resourceName]
-		if !ok {
-			return "", fmt.Errorf("resource not found: %s", resourceName)
-		}
+resource "keycloak_organization" "organization" {
+	name  = "%s"
+	realm = data.keycloak_realm.realm.id
 
-		id := rs.Primary.ID
-		realmId := rs.Primary.Attributes["realm_id"]
-
-		return fmt.Sprintf("%s/%s", realmId, id), nil
+	domain {
+		name     = "example.com"
+		verified = true
 	}
 }
+	`, testAccRealm.Realm, organization)
+}
 
-// Sweeper function to clean up test organizations
-func sweepOrganizations() error {
+func testKeycloakOrganization_all(org *keycloak.Organization) string {
+	return fmt.Sprintf(`
+data "keycloak_realm" "realm" {
+	realm = "%s"
+}
 
-	organizations, err := keycloakClient.GetOrganizations(context.TODO(), testAccRealm.Realm)
-	if err != nil {
-		return err
+resource "keycloak_organization" "organization" {
+	name         = "%s"
+	alias        = "%s"
+	realm        = data.keycloak_realm.realm.id
+	enabled      = %t
+	description  = "%s"
+	redirect_url = "%s"
+
+	domain {
+		name 	 = "%s"
+		verified = %t
+	}
+}
+	`, testAccRealm.Realm, org.Name, org.Alias, org.Enabled, org.Description, org.RedirectUrl, org.Domains[0].Name, org.Domains[0].Verified)
+}
+
+func testKeycloakOrganization_multipleDomains(organizationName, domainName string) string {
+	return fmt.Sprintf(`
+data "keycloak_realm" "realm" {
+	realm = "%s"
+}
+
+resource "keycloak_organization" "organization" {
+	name  = "%s"
+	realm = data.keycloak_realm.realm.id
+
+	domain {
+		name     = "example.com"
 	}
 
-	for _, organization := range organizations {
-		if strings.HasPrefix(organization.Name, "tf-acc") {
-			err = keycloakClient.DeleteOrganization(context.TODO(), organization.RealmId, organization.Id)
-			if err != nil {
-				return err
-			}
-		}
+	domain {
+		name 	 = "%s"
+	}
+}
+	`, testAccRealm.Realm, organizationName, domainName)
+}
+
+func testKeycloakOrganization_attributes(organizationName, attributeName, attributeValue string) string {
+	return fmt.Sprintf(`
+data "keycloak_realm" "realm" {
+	realm = "%s"
+}
+
+resource "keycloak_organization" "organization" {
+	name     = "%s"
+	realm    = data.keycloak_realm.realm.id
+
+	domain {
+		name     = "example.com"
+		verified = true
 	}
 
-	return nil
+	attributes = {
+		"%s" = "%s"
+	}
+}
+	`, testAccRealm.Realm, organizationName, attributeName, attributeValue)
 }

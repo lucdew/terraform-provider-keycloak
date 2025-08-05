@@ -2,13 +2,15 @@
 page_title: "keycloak_organization Resource"
 ---
 
-# keycloak_organization Resource
+# keycloak\_organization Resource
 
-Allows for creating and managing Organizations within Keycloak.
+Allow for creating and managing Organizations within Keycloak.
 
-It only configures the Organization own data but not the association to the identity providers or organization members.
+Attributes can also be defined on Groups.
 
-## Example Usage
+Linkage with identity providers is managed with the identity provider resources.
+
+## Example usage
 
 ```hcl
 resource "keycloak_realm" "realm" {
@@ -16,52 +18,54 @@ resource "keycloak_realm" "realm" {
   enabled = true
 }
 
-resource "keycloak_organization" "engineering" {
-  realm_id     = keycloak_realm.example.id
-  name         = "engineering"
-  alias        = "engineering"
-  description  = "Organization for the engineering department"
-
-  domain       {
-    name = "engineering.example.com"
-    verified = true
+resource "keycloak_organization" "this" {
+  realm    = keycloak_realm.realm.name
+  name     = "org"
+  alias = "org"
+  enabled = true
+  
+  domain {
+    name = "example.com"
   }
+}
 
-  domain       {
-    name = "engineering-lab.example.com"
-  }
+resource "keycloak_oidc_identity_provider" "this" {
+  realm             = keycloak_realm.realm.name
+  alias             = "my-idp"
+  authorization_url = "https://authorizationurl.com"
+  client_id         = "clientID"
+  client_secret     = "clientSecret"
+  token_url         = "https://tokenurl.com"
 
-  attributes   = {
-    department = "technical"
-    location   = "headquarter"
-  }
+  organization_id                 = keycloak_organization.this.id
+  org_domain                      = "example.com"
+  org_redirect_mode_email_matches = true
 }
 
 ```
 
 ## Argument Reference
 
-- `realm_id` - (Required) The realm this organization exists in.
-- `name` - (Required) The name of the organization
-- `alias` - (Optional) The alias of the organization. It cannot be updated and must not have spaces. If not set it is computed.
-- `enabled` - (Optional) When `false`, members will not be able to access this organization. Defaults to `true`.
-- `description` - (Optional) the organization description.
-- `redirect_url` - (Optional) the organization redirect url.
-- `attributes` - (Optional) A map representing attributes for the organization. In order to add multivalued attributes, use `##` to separate the values. Max length for each value is 255 chars
+- `realm` - (Required) The realm this organization exists in.
+- `name` - (Required) The name of the organization.
+- `alias` - (Optional) The alias unique identifies the organization. Same as the name if not specified. The alias cannot be changed after the organization has been created.
+- `description` - (Optional) The description of the organization.
+- `redirect_url` - (Optional) The landing page after user completes registration or accepts an invitation to the organization. If left empty, the user will be redirected to the account console by default.
+- `domain` - (Required) A list of [domains](#domain-arguments). At least one domain is required.
+- `attributes` - (Optional) A map representing attributes for the group. In order to add multivalued attributes, use `##` to separate the values. Max length for each value is 255 chars.
 
-### Domains
+### Domain arguments
 
-Associated domains can be configured by using 1 or more `domain` block, which supports the following arguments:
-
-- `name` - (Required) The domain name. Must be unique.
-- `verified` - (Optional) When `true`, indicates that the domain has been verified. Defaults to `false`.
+- `name` - (Required) The domain name
+- `verified` - (Optional) Whether domain is verified or not. Default is false.
 
 ## Import
 
-Organizations can be imported using the format `{{realm_id}}/{{organization_id}}`, where `organization` is the unique ID that Keycloak assigns to the organization upon creation. This value can be found in the URI when editing this organization in the GUI, and is typically a GUID.
+Organizations can be imported using the format `{{realm_id}}/{{organization_id}}`, where `organization_id` is the unique ID that Keycloak
+assigns to the organizations upon creation. This value can be found in the URI when editing this organization in the GUI, and is typically a GUID.
 
 Example:
 
 ```bash
-$ terraform import keycloak_organization.engineering my-realm/934a4a4e-28bd-4703-a0fa-332df153aabd
+$ terraform import keycloak_organization.this my-realm/cec54914-b702-4c7b-9431-b407817d059a
 ```

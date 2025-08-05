@@ -29,12 +29,15 @@ func KeycloakProvider(client *keycloak.KeycloakClient) *schema.Provider {
 			"keycloak_authentication_execution":           dataSourceKeycloakAuthenticationExecution(),
 			"keycloak_authentication_flow":                dataSourceKeycloakAuthenticationFlow(),
 			"keycloak_client_description_converter":       dataSourceKeycloakClientDescriptionConverter(),
+			"keycloak_organization":                       dataSourceKeycloakOrgnization(),
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"keycloak_realm":                                             resourceKeycloakRealm(),
 			"keycloak_realm_events":                                      resourceKeycloakRealmEvents(),
 			"keycloak_realm_default_client_scopes":                       resourceKeycloakRealmDefaultClientScopes(),
 			"keycloak_realm_optional_client_scopes":                      resourceKeycloakRealmOptionalClientScopes(),
+			"keycloak_realm_client_policy_profile":                       resourceKeycloakRealmClientPolicyProfile(),
+			"keycloak_realm_client_policy_profile_policy":                resourceKeycloakRealmClientPolicyProfilePolicy(),
 			"keycloak_realm_keystore_aes_generated":                      resourceKeycloakRealmKeystoreAesGenerated(),
 			"keycloak_realm_keystore_ecdsa_generated":                    resourceKeycloakRealmKeystoreEcdsaGenerated(),
 			"keycloak_realm_keystore_hmac_generated":                     resourceKeycloakRealmKeystoreHmacGenerated(),
@@ -81,6 +84,7 @@ func KeycloakProvider(client *keycloak.KeycloakClient) *schema.Provider {
 			"keycloak_openid_script_protocol_mapper":                     resourceKeycloakOpenIdScriptProtocolMapper(),
 			"keycloak_openid_client_default_scopes":                      resourceKeycloakOpenidClientDefaultScopes(),
 			"keycloak_openid_client_optional_scopes":                     resourceKeycloakOpenidClientOptionalScopes(),
+			"keycloak_organization":                                      resourceKeycloakOrganization(),
 			"keycloak_saml_client":                                       resourceKeycloakSamlClient(),
 			"keycloak_saml_client_scope":                                 resourceKeycloakSamlClientScope(),
 			"keycloak_saml_client_default_scopes":                        resourceKeycloakSamlClientDefaultScopes(),
@@ -148,6 +152,19 @@ func KeycloakProvider(client *keycloak.KeycloakClient) *schema.Provider {
 				Optional:    true,
 				Type:        schema.TypeString,
 				DefaultFunc: schema.EnvDefaultFunc("KEYCLOAK_PASSWORD", nil),
+			},
+			"jwt_signing_alg": {
+				Optional:    true,
+				Type:        schema.TypeString,
+				Description: "The algorithm used to sign the JWT when client-jwt is used. Defaults to RS256.",
+				Default:     "RS256",
+			},
+			"jwt_signing_key": {
+				Optional:    true,
+				Type:        schema.TypeString,
+				Description: "The PEM-formatted private key used to sign the JWT when client-jwt is used.",
+				Sensitive:   true,
+				DefaultFunc: schema.EnvDefaultFunc("KEYCLOAK_JWT_SIGNING_KEY", nil),
 			},
 			"realm": {
 				Optional:    true,
@@ -228,6 +245,8 @@ func KeycloakProvider(client *keycloak.KeycloakClient) *schema.Provider {
 		clientSecret := data.Get("client_secret").(string)
 		username := data.Get("username").(string)
 		password := data.Get("password").(string)
+		jwtSigningAlg := data.Get("jwt_signing_alg").(string)
+		jwtSigningKey := data.Get("jwt_signing_key").(string)
 		realm := data.Get("realm").(string)
 		initialLogin := data.Get("initial_login").(bool)
 		clientTimeout := data.Get("client_timeout").(int)
@@ -245,7 +264,7 @@ func KeycloakProvider(client *keycloak.KeycloakClient) *schema.Provider {
 
 		userAgent := fmt.Sprintf("HashiCorp Terraform/%s (+https://www.terraform.io) Terraform Plugin SDK/%s", provider.TerraformVersion, meta.SDKVersionString())
 
-		keycloakClient, err := keycloak.NewKeycloakClient(ctx, url, basePath, clientId, clientSecret, realm, username, password, initialLogin, clientTimeout, rootCaCertificate, tlsClientCertificate, tlsClientPrivateKey, tlsInsecureSkipVerify, userAgent, redHatSSO, additionalHeaders)
+		keycloakClient, err := keycloak.NewKeycloakClient(ctx, url, basePath, clientId, clientSecret, realm, username, password, jwtSigningAlg, jwtSigningKey, initialLogin, clientTimeout, rootCaCertificate, tlsClientCertificate, tlsClientPrivateKey, tlsInsecureSkipVerify, userAgent, redHatSSO, additionalHeaders)
 		if err != nil {
 			diags = append(diags, diag.Diagnostic{
 				Severity: diag.Error,
