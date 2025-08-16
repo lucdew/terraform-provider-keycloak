@@ -7,8 +7,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-
 	"github.com/keycloak/terraform-provider-keycloak/keycloak"
 )
 
@@ -16,50 +14,55 @@ func resourceKeycloakOrganization() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceKeycloakOrganizationCreate,
 		ReadContext:   resourceKeycloakOrganizationRead,
-		UpdateContext: resourceKeycloakOrganizationUpdate,
 		DeleteContext: resourceKeycloakOrganizationDelete,
+		UpdateContext: resourceKeycloakOrganizationUpdate,
+		// This resource can be imported using {{realm}}/{{client_id}}. The Client ID is displayed in the GUI
 		Importer: &schema.ResourceImporter{
 			StateContext: resourceKeycloakOrganizationImport,
 		},
 		Schema: map[string]*schema.Schema{
-			"realm_id": {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				ValidateFunc: validation.StringIsNotEmpty,
-			},
 			"name": {
-				Type:         schema.TypeString,
-				Required:     true,
-				ValidateFunc: validation.StringIsNotEmpty,
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The name of the organization.",
+			},
+			"realm": {
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "Realm ID.",
 			},
 			"alias": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				Computed:     true,
-				ValidateFunc: validation.StringIsNotEmpty,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: "The alias unique identifies the organization. Same as the name if not specified.",
 			},
 			"enabled": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  true,
-			},
-			"redirect_url": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "Enable/disable this organization.",
 			},
 			"description": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"redirect_url": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Landing page after successful login.",
+			},
 			"domain": {
 				Type:     schema.TypeSet,
-				Optional: true,
+				Required: true,
+				MinItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"verified": {
 							Type:     schema.TypeBool,
@@ -68,193 +71,155 @@ func resourceKeycloakOrganization() *schema.Resource {
 						},
 					},
 				},
-				// Custom validation function to ensure domain names are unique
-				//ValidateFunc: validateUniqueDomainNames,
 			},
 			"attributes": {
 				Type:     schema.TypeMap,
 				Optional: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
+				Computed: true,
 			},
 		},
 	}
 }
 
+func getOrganizationFromData(data *schema.ResourceData) (*keycloak.Organization, error) {
+	organization := &keycloak.Organization{
+		Id:          data.Id(),
+		Realm:       data.Get("realm").(string),
+		Name:        data.Get("name").(string),
+		Alias:       data.Get("alias").(string),
+		Enabled:     data.Get("enabled").(bool),
+		Description: data.Get("description").(string),
+		RedirectUrl: data.Get("redirect_url").(string),
+	}
+
+	domains := make([]keycloak.OrganizationDomain, 0)
+	if v, ok := data.GetOk("domain"); ok {
+		for _, domain := range v.(*schema.Set).List() {
+			domainMap := domain.(map[string]interface{})
+			orgDomain := keycloak.OrganizationDomain{
+				Name:     domainMap["name"].(string),
+				Verified: domainMap["verified"].(bool),
+			}
+			domains = append(domains, orgDomain)
+		}
+	}
+
+	if len(domains) == 0 {
+		return nil, fmt.Errorf("at least one domain is required")
+	}
+	organization.Domains = domains
+
+	attributes := map[string][]string{}
+	if v, ok := data.GetOk("attributes"); ok {
+		for key, value := range v.(map[string]interface{}) {
+			attributes[key] = strings.Split(value.(string), MULTIVALUE_ATTRIBUTE_SEPARATOR)
+		}
+	}
+	organization.Attributes = attributes
+
+	return organization, nil
+}
+
+func setOrganizationData(data *schema.ResourceData, organization *keycloak.Organization) error {
+	attributes := map[string]string{}
+	for k, v := range organization.Attributes {
+		attributes[k] = strings.Join(v, MULTIVALUE_ATTRIBUTE_SEPARATOR)
+	}
+
+	domains := make([]map[string]interface{}, 0, len(organization.Domains))
+	for _, domain := range organization.Domains {
+		domainMap := make(map[string]interface{})
+		domainMap["name"] = domain.Name
+		domainMap["verified"] = domain.Verified
+		domains = append(domains, domainMap)
+	}
+
+	data.SetId(organization.Id)
+	data.Set("name", organization.Name)
+	data.Set("realm", organization.Realm)
+	data.Set("alias", organization.Alias)
+	data.Set("enabled", organization.Enabled)
+	data.Set("description", organization.Description)
+	data.Set("redirect_url", organization.RedirectUrl)
+	data.Set("domain", domains)
+	data.Set("attributes", attributes)
+
+	return nil
+}
+
+func resourceKeycloakOrganizationImport(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+	keycloakClient := meta.(*keycloak.KeycloakClient)
+	parts := strings.Split(d.Id(), "/")
+
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("Invalid import. Supported import formats: {{realm}}/{{OrganizationId}}")
+	}
+
+	_, err := keycloakClient.GetOrganization(ctx, parts[0], parts[1])
+	if err != nil {
+		return nil, err
+	}
+
+	d.Set("realm", parts[0])
+	d.SetId(parts[1])
+
+	diagnostics := resourceKeycloakOrganizationRead(ctx, d, meta)
+	if diagnostics.HasError() {
+		return nil, fmt.Errorf("Error reading Organization: %s", diagnostics[0].Summary)
+	}
+
+	return []*schema.ResourceData{d}, nil
+}
+
 func resourceKeycloakOrganizationCreate(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	keycloakClient := meta.(*keycloak.KeycloakClient)
 
-	organization := getOrganizationFromData(data)
-
-	err := keycloakClient.CreateOrganization(ctx, organization)
+	Organization, err := getOrganizationFromData(data)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	data.SetId(organization.Id)
-
+	if err = keycloakClient.NewOrganization(ctx, Organization); err != nil {
+		return diag.FromErr(err)
+	}
+	if err = setOrganizationData(data, Organization); err != nil {
+		return diag.FromErr(err)
+	}
 	return resourceKeycloakOrganizationRead(ctx, data, meta)
 }
 
 func resourceKeycloakOrganizationRead(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	keycloakClient := meta.(*keycloak.KeycloakClient)
-
-	realmId := data.Get("realm_id").(string)
+	realm := data.Get("realm").(string)
 	id := data.Id()
-
-	organization, err := keycloakClient.GetOrganization(ctx, realmId, id)
+	Organization, err := keycloakClient.GetOrganization(ctx, realm, id)
 	if err != nil {
 		return handleNotFoundError(ctx, err, data)
 	}
 
-	setOrganizationData(data, organization)
-
-	return nil
+	return diag.FromErr(setOrganizationData(data, Organization))
 }
 
 func resourceKeycloakOrganizationUpdate(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	keycloakClient := meta.(*keycloak.KeycloakClient)
-
-	organization := getOrganizationFromData(data)
-
-	err := keycloakClient.UpdateOrganization(ctx, organization)
+	Organization, err := getOrganizationFromData(data)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	return resourceKeycloakOrganizationRead(ctx, data, meta)
+	err = keycloakClient.UpdateOrganization(ctx, Organization)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	return diag.FromErr(setOrganizationData(data, Organization))
 }
 
 func resourceKeycloakOrganizationDelete(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	keycloakClient := meta.(*keycloak.KeycloakClient)
 
-	realmId := data.Get("realm_id").(string)
+	realm := data.Get("realm").(string)
 	id := data.Id()
 
-	err := keycloakClient.DeleteOrganization(ctx, realmId, id)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	return nil
-}
-
-func resourceKeycloakOrganizationImport(ctx context.Context, data *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	parts := strings.Split(data.Id(), "/")
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid import. Supported format: {{realm}}/{{organizationId}}")
-	}
-
-	data.Set("realm_id", parts[0])
-	data.SetId(parts[1])
-
-	return []*schema.ResourceData{data}, nil
-}
-
-func getOrganizationFromData(data *schema.ResourceData) *keycloak.Organization {
-
-	return &keycloak.Organization{
-		Id:          data.Id(),
-		RealmId:     data.Get("realm_id").(string),
-		Name:        data.Get("name").(string),
-		Alias:       data.Get("alias").(string),
-		Enabled:     data.Get("enabled").(bool),
-		RedirectUrl: data.Get("redirect_url").(string),
-		Description: data.Get("description").(string),
-		Domains:     expandOrganizationDomains(data.Get("domain").(*schema.Set)),
-		Attributes:  expandStringMap(data.Get("attributes").(map[string]interface{})),
-	}
-
-}
-
-func setOrganizationData(data *schema.ResourceData, organization *keycloak.Organization) {
-	data.Set("realm_id", organization.RealmId)
-	data.Set("name", organization.Name)
-	data.Set("alias", organization.Alias)
-	data.Set("enabled", organization.Enabled)
-	data.Set("redirect_url", organization.RedirectUrl)
-	data.Set("description", organization.Description)
-	data.Set("domain", flattenOrganizationDomains(organization.Domains))
-	data.Set("attributes", flattenStringMap(organization.Attributes))
-}
-
-// validateUniqueDomainNames ensures that all domain names within the set are unique
-func validateUniqueDomainNames(v interface{}, k string) (warnings []string, errors []error) {
-
-	domains := v.(*schema.Set).List()
-
-	// Create a map to track domain names
-	domainNames := make(map[string]bool)
-
-	for _, domain := range domains {
-		domainMap := domain.(map[string]interface{})
-		domainName := domainMap["name"].(string)
-
-		if domainName == "" {
-			continue // Skip empty domain names
-		}
-
-		// Check if this domain name is already in use
-		if _, exists := domainNames[domainName]; exists {
-			errors = append(errors, fmt.Errorf("duplicate domain name found: %s. Domain names must be unique", domainName))
-		} else {
-			domainNames[domainName] = true
-		}
-	}
-
-	return warnings, errors
-}
-
-// Helper functions for domain handling
-func expandOrganizationDomains(set *schema.Set) []keycloak.OrganizationDomain {
-	domains := make([]keycloak.OrganizationDomain, 0, set.Len())
-
-	for _, value := range set.List() {
-		domainMap := value.(map[string]interface{})
-		domain := keycloak.OrganizationDomain{
-			Name:     domainMap["name"].(string),
-			Verified: domainMap["verified"].(bool),
-		}
-		domains = append(domains, domain)
-	}
-
-	return domains
-}
-
-func flattenOrganizationDomains(domains []keycloak.OrganizationDomain) *schema.Set {
-	set := schema.NewSet(schema.HashResource(resourceKeycloakOrganization().Schema["domain"].Elem.(*schema.Resource)), []interface{}{})
-
-	for _, domain := range domains {
-		domainMap := map[string]interface{}{
-			"name":     domain.Name,
-			"verified": domain.Verified,
-		}
-		set.Add(domainMap)
-	}
-
-	return set
-}
-
-// Helper for expanding a map to a string-to-string-slice map
-func expandStringMap(m map[string]interface{}) map[string][]string {
-	result := make(map[string][]string)
-	for k, v := range m {
-		result[k] = []string{v.(string)}
-	}
-	return result
-}
-
-// Helper for flattening a string-to-string-slice map to a regular map
-func flattenStringMap(m map[string][]string) map[string]interface{} {
-	result := make(map[string]interface{})
-	for k, v := range m {
-		if len(v) > 0 {
-			result[k] = v[0]
-		}
-	}
-	return result
-}
-
-func importStringParse(importString string) []string {
-	parts := strings.Split(importString, "/")
-	return parts
+	return diag.FromErr(keycloakClient.DeleteOrganization(ctx, realm, id))
 }
