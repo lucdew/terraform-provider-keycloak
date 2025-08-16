@@ -8,17 +8,9 @@ Pull requests have been submitted in the official provider for them.
 Only submit issues/pull requests for these features, not the official provider.
 The documentation below is the one of the official provider.
 
-## Migration to the new provider
-
-To migrate from `mrparkers/keycloak` to the `keycloak/keycloak` Terraform provider, you can use the `terraform state replace-provider` command:
-```
-terraform state replace-provider mrparkers/keycloak keycloak/keycloak
-```
-You can find the documentation for this command [here](https://developer.hashicorp.com/terraform/cli/commands/state/replace-provider).
-
 ## Docs
 
-All documentation for this provider can now be found on the Terraform Registry: https://registry.terraform.io/providers/keycloak/keycloak/latest/docs
+All documentation for this provider can now be found on the Terraform Registry: https://registry.terraform.io/providers/lucdew/keycloak/latest/docs
 
 ## Installation
 

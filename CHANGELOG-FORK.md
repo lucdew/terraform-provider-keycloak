@@ -1,3 +1,8 @@
+## 5.4.0-1.5.0 (August 13, 2025)
+
+- Merge the official keycloak provider v5.4.0 ([#13](https://github.com/lucdew/terraform-provider-keycloak/pull/13))
+  The version replaces the organization features added in the 5.1.1-1.1.0 and 5.1.1-1.2.0 with the ones of the official terraform provider.
+
 ## 5.2.0-1.4.1 (June 12, 2025)
 
 - Fix the smtp server authentication broken on realm updates on Keycloak 26.2 ([#12](https://github.com/lucdew/terraform-provider-keycloak/pull/12))
